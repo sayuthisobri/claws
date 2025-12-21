@@ -19,13 +19,13 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteVolume",
 			Confirm:   true,
-			Dangerous: true,
 		},
 		{
 			Name:      "Create Snapshot",
 			Shortcut:  "s",
 			Type:      action.ActionTypeAPI,
 			Operation: "CreateSnapshot",
+			Confirm:   true,
 		},
 		{
 			Name:      "Detach",

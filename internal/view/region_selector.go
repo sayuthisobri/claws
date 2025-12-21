@@ -6,7 +6,9 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
+	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/ui"
 )
 
@@ -24,11 +26,6 @@ type regionItem string
 func (r regionItem) Title() string       { return string(r) }
 func (r regionItem) Description() string { return "" }
 func (r regionItem) FilterValue() string { return string(r) }
-
-// RegionChangedMsg is sent when region is changed
-type RegionChangedMsg struct {
-	Region string
-}
 
 // NewRegionSelector creates a new region selector
 func NewRegionSelector(ctx context.Context) *RegionSelector {
@@ -61,7 +58,7 @@ func (r *RegionSelector) Init() tea.Cmd {
 }
 
 func (r *RegionSelector) loadRegions() tea.Msg {
-	regions, _ := config.FetchAvailableRegions(r.ctx)
+	regions, _ := aws.FetchAvailableRegions(r.ctx)
 	return regionsLoadedMsg{regions: regions}
 }
 
@@ -95,7 +92,7 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					region := string(item)
 					config.Global().SetRegion(region)
 					return r, func() tea.Msg {
-						return RegionChangedMsg{Region: region}
+						return navmsg.RegionChangedMsg{Region: region}
 					}
 				}
 			}

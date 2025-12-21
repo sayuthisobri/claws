@@ -8,19 +8,85 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/ui"
 	"golang.org/x/term"
 )
 
+// setAWSEnv configures AWS environment variables on the command.
+// Delegates to aws.BuildSubprocessEnv for consistent handling.
+func setAWSEnv(cmd *exec.Cmd) {
+	cfg := config.Global()
+	cmd.Env = aws.BuildSubprocessEnv(cmd.Env, cfg.Selection(), cfg.Region())
+}
+
+// SimpleExec represents a simple exec command without header.
+// Implements tea.ExecCommand interface.
+type SimpleExec struct {
+	Command    string
+	ActionName string // Action name for read-only allowlist check
+	SkipAWSEnv bool   // If true, don't inject AWS env vars (for commands that need to write to ~/.aws)
+
+	stdin  io.Reader
+	stdout io.Writer
+	stderr io.Writer
+}
+
+// SetStdin sets the stdin for the command
+func (e *SimpleExec) SetStdin(r io.Reader) { e.stdin = r }
+
+// SetStdout sets the stdout for the command
+func (e *SimpleExec) SetStdout(w io.Writer) { e.stdout = w }
+
+// SetStderr sets the stderr for the command
+func (e *SimpleExec) SetStderr(w io.Writer) { e.stderr = w }
+
+// Run executes the command
+func (e *SimpleExec) Run() error {
+	// Read-only enforcement at execution layer
+	if config.Global().ReadOnly() && !ReadOnlyExecAllowlist[e.ActionName] {
+		return ErrReadOnlyDenied
+	}
+
+	if e.Command == "" {
+		return ErrEmptyCommand
+	}
+
+	stdin := e.stdin
+	stdout := e.stdout
+	stderr := e.stderr
+	if stdin == nil {
+		stdin = os.Stdin
+	}
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	if stderr == nil {
+		stderr = os.Stderr
+	}
+
+	cmd := exec.Command("/bin/sh", "-c", e.Command)
+	cmd.Stdin = stdin
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if !e.SkipAWSEnv {
+		setAWSEnv(cmd)
+	}
+
+	return cmd.Run()
+}
+
 // ExecWithHeader represents an exec command that should run with a fixed header
 // Implements tea.ExecCommand interface
 type ExecWithHeader struct {
-	Command  string
-	Resource dao.Resource
-	Service  string
-	ResType  string
+	Command    string
+	ActionName string // Action name for read-only allowlist check
+	Resource   dao.Resource
+	Service    string
+	ResType    string
+	SkipAWSEnv bool // If true, don't inject AWS env vars
 
 	stdin  io.Reader
 	stdout io.Writer
@@ -44,6 +110,11 @@ func (e *ExecWithHeader) SetStderr(w io.Writer) {
 
 // Run executes the command with a fixed header at the top
 func (e *ExecWithHeader) Run() error {
+	// Read-only enforcement at execution layer
+	if config.Global().ReadOnly() && !ReadOnlyExecAllowlist[e.ActionName] {
+		return ErrReadOnlyDenied
+	}
+
 	// Use provided or default stdin/stdout/stderr
 	stdin := e.stdin
 	stdout := e.stdout
@@ -92,13 +163,16 @@ func (e *ExecWithHeader) Run() error {
 
 	// Prepare command - run through shell to support quoting and pipes
 	if e.Command == "" {
-		return fmt.Errorf("empty command")
+		return ErrEmptyCommand
 	}
 
 	cmd := exec.Command("/bin/sh", "-c", e.Command)
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
+	if !e.SkipAWSEnv {
+		setAWSEnv(cmd)
+	}
 
 	// Run the command
 	err := cmd.Run()
@@ -127,7 +201,8 @@ func (e *ExecWithHeader) Run() error {
 	return err
 }
 
-func (e *ExecWithHeader) buildHeader(width int) string {
+func (e *ExecWithHeader) buildHeader(_ int) string {
+	profileDisplay := config.Global().Selection().DisplayName()
 	region := config.Global().Region()
 	accountID := config.Global().AccountID()
 
@@ -161,17 +236,17 @@ func (e *ExecWithHeader) buildHeader(width int) string {
 	}
 	lines = append(lines, resourceLine)
 
-	// Context line
-	contextParts := []string{}
+	// Context line: Profile, Region, Account
+	contextParts := []string{
+		labelStyle.Render("Profile: ") + valueStyle.Render(profileDisplay),
+	}
 	if region != "" {
 		contextParts = append(contextParts, regionStyle.Render("["+region+"]"))
 	}
 	if accountID != "" {
 		contextParts = append(contextParts, labelStyle.Render("Account: ")+valueStyle.Render(accountID))
 	}
-	if len(contextParts) > 0 {
-		lines = append(lines, strings.Join(contextParts, " "))
-	}
+	lines = append(lines, strings.Join(contextParts, " "))
 
 	// Hint line
 	hintStyle := lipgloss.NewStyle().Foreground(ui.Current().TextDim).Italic(true)

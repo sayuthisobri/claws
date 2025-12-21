@@ -1,27 +1,136 @@
 package config
 
 import (
-	"bufio"
-	"context"
 	"os"
-	"path/filepath"
-	"slices"
-	"strings"
 	"sync"
-
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/ec2"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 // DemoAccountID is the masked account ID shown in demo mode
 const DemoAccountID = "123456789012"
 
+// Profile resource ID constants for stable identification
+const (
+	// ProfileIDSDKDefault is the resource ID for SDK default credential mode
+	ProfileIDSDKDefault = "__sdk_default__"
+	// ProfileIDEnvOnly is the resource ID for env/IMDS-only credential mode
+	ProfileIDEnvOnly = "__env_only__"
+)
+
+// ProfileSelectionFromID returns ProfileSelection for a resource ID.
+func ProfileSelectionFromID(id string) ProfileSelection {
+	switch id {
+	case ProfileIDSDKDefault:
+		return SDKDefault()
+	case ProfileIDEnvOnly:
+		return EnvOnly()
+	default:
+		return NamedProfile(id)
+	}
+}
+
+// CredentialMode represents how AWS credentials are resolved
+type CredentialMode int
+
+const (
+	// ModeSDKDefault lets AWS SDK decide via standard credential chain.
+	// Preserves existing AWS_PROFILE environment variable.
+	ModeSDKDefault CredentialMode = iota
+
+	// ModeNamedProfile explicitly uses a named profile from ~/.aws config.
+	ModeNamedProfile
+
+	// ModeEnvOnly ignores ~/.aws files, uses IMDS/environment/ECS/Lambda creds only.
+	ModeEnvOnly
+)
+
+// String returns a display string for the credential mode
+func (m CredentialMode) String() string {
+	switch m {
+	case ModeSDKDefault:
+		return "SDK Default"
+	case ModeNamedProfile:
+		return "" // Profile name is shown separately
+	case ModeEnvOnly:
+		return "Env/IMDS Only"
+	default:
+		return "Unknown"
+	}
+}
+
+// ProfileSelection represents the selected credential mode and optional profile name
+type ProfileSelection struct {
+	Mode        CredentialMode
+	ProfileName string // Only used when Mode == ModeNamedProfile
+}
+
+// SDKDefault returns a selection for SDK default credential chain
+func SDKDefault() ProfileSelection {
+	return ProfileSelection{Mode: ModeSDKDefault}
+}
+
+// EnvOnly returns a selection for environment/IMDS credentials only
+func EnvOnly() ProfileSelection {
+	return ProfileSelection{Mode: ModeEnvOnly}
+}
+
+// NamedProfile returns a selection for a specific named profile
+func NamedProfile(name string) ProfileSelection {
+	return ProfileSelection{Mode: ModeNamedProfile, ProfileName: name}
+}
+
+// DisplayName returns the display name for this selection.
+// For SDKDefault mode, includes AWS_PROFILE value if set.
+func (s ProfileSelection) DisplayName() string {
+	switch s.Mode {
+	case ModeSDKDefault:
+		if p := os.Getenv("AWS_PROFILE"); p != "" {
+			return "SDK Default (AWS_PROFILE=" + p + ")"
+		}
+		return "SDK Default"
+	case ModeEnvOnly:
+		return "Env/IMDS Only"
+	case ModeNamedProfile:
+		return s.ProfileName
+	default:
+		return "Unknown"
+	}
+}
+
+// IsSDKDefault returns true if this is SDK default mode
+func (s ProfileSelection) IsSDKDefault() bool {
+	return s.Mode == ModeSDKDefault
+}
+
+// IsEnvOnly returns true if this is env-only mode
+func (s ProfileSelection) IsEnvOnly() bool {
+	return s.Mode == ModeEnvOnly
+}
+
+// IsNamedProfile returns true if this is a named profile
+func (s ProfileSelection) IsNamedProfile() bool {
+	return s.Mode == ModeNamedProfile
+}
+
+// ID returns the stable resource ID for this selection.
+// This is the inverse of ProfileSelectionFromID.
+func (s ProfileSelection) ID() string {
+	switch s.Mode {
+	case ModeSDKDefault:
+		return ProfileIDSDKDefault
+	case ModeEnvOnly:
+		return ProfileIDEnvOnly
+	case ModeNamedProfile:
+		return s.ProfileName
+	default:
+		return ""
+	}
+}
+
 // Config holds global application configuration
 type Config struct {
 	mu        sync.RWMutex
 	region    string
-	profile   string
+	selection ProfileSelection
 	accountID string
 	warnings  []string
 	readOnly  bool
@@ -55,18 +164,33 @@ func (c *Config) SetRegion(region string) {
 	c.region = region
 }
 
-// Profile returns the current AWS profile
-func (c *Config) Profile() string {
+// Selection returns the current profile selection
+func (c *Config) Selection() ProfileSelection {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.profile
+	return c.selection
 }
 
-// SetProfile sets the current AWS profile
-func (c *Config) SetProfile(profile string) {
+// SetSelection sets the profile selection
+func (c *Config) SetSelection(sel ProfileSelection) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.profile = profile
+	c.selection = sel
+}
+
+// UseSDKDefault sets SDK default credential mode
+func (c *Config) UseSDKDefault() {
+	c.SetSelection(SDKDefault())
+}
+
+// UseEnvOnly sets environment-only credential mode
+func (c *Config) UseEnvOnly() {
+	c.SetSelection(EnvOnly())
+}
+
+// UseProfile sets a named profile
+func (c *Config) UseProfile(name string) {
+	c.SetSelection(NamedProfile(name))
 }
 
 // AccountID returns the current AWS account ID (masked in demo mode)
@@ -77,6 +201,13 @@ func (c *Config) AccountID() string {
 		return DemoAccountID
 	}
 	return c.accountID
+}
+
+// SetAccountID sets the AWS account ID
+func (c *Config) SetAccountID(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.accountID = id
 }
 
 // SetDemoMode enables or disables demo mode
@@ -124,150 +255,9 @@ func (c *Config) SetReadOnly(readOnly bool) {
 	c.readOnly = readOnly
 }
 
-// addWarning adds a warning message
-func (c *Config) addWarning(msg string) {
+// AddWarning adds a warning message
+func (c *Config) AddWarning(msg string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.warnings = append(c.warnings, msg)
-}
-
-// Init initializes the config, detecting region and account ID from environment/IMDS
-func (c *Config) Init(ctx context.Context) error {
-	// Check external dependencies
-	c.checkDependencies()
-
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithEC2IMDSRegion(),
-	)
-	if err != nil {
-		return err
-	}
-
-	c.mu.Lock()
-	c.region = cfg.Region
-	c.mu.Unlock()
-
-	// Get account ID from STS
-	stsClient := sts.NewFromConfig(cfg)
-	identity, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
-	if err == nil && identity.Account != nil {
-		c.mu.Lock()
-		c.accountID = *identity.Account
-		c.mu.Unlock()
-	}
-
-	return nil
-}
-
-// checkDependencies checks for required external tools
-func (c *Config) checkDependencies() {
-	// Disabled: SSM plugin warning is too noisy for demo/general use
-	// The action itself will fail gracefully if plugin is missing
-}
-
-// CommonRegions returns a list of common AWS regions
-var CommonRegions = []string{
-	"us-east-1",
-	"us-east-2",
-	"us-west-1",
-	"us-west-2",
-	"eu-west-1",
-	"eu-west-2",
-	"eu-central-1",
-	"ap-northeast-1",
-	"ap-northeast-2",
-	"ap-southeast-1",
-	"ap-southeast-2",
-	"ap-south-1",
-	"sa-east-1",
-}
-
-// FetchAvailableRegions fetches available regions from AWS
-func FetchAvailableRegions(ctx context.Context) ([]string, error) {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithEC2IMDSRegion(),
-	)
-	if err != nil {
-		return CommonRegions, nil // Fallback to common regions
-	}
-
-	client := ec2.NewFromConfig(cfg)
-	output, err := client.DescribeRegions(ctx, &ec2.DescribeRegionsInput{})
-	if err != nil {
-		return CommonRegions, nil // Fallback to common regions
-	}
-
-	regions := make([]string, 0, len(output.Regions))
-	for _, r := range output.Regions {
-		if r.RegionName != nil {
-			regions = append(regions, *r.RegionName)
-		}
-	}
-	return regions, nil
-}
-
-// FetchAvailableProfiles returns available AWS profiles from credentials and config files
-func FetchAvailableProfiles() []string {
-	profileSet := make(map[string]struct{})
-
-	// Add "default" profile always
-	profileSet["default"] = struct{}{}
-
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return []string{"default"}
-	}
-
-	// Parse ~/.aws/credentials
-	credentialsPath := filepath.Join(homeDir, ".aws", "credentials")
-	parseProfilesFromFile(credentialsPath, profileSet, false)
-
-	// Parse ~/.aws/config
-	configPath := filepath.Join(homeDir, ".aws", "config")
-	parseProfilesFromFile(configPath, profileSet, true)
-
-	// Convert to sorted slice
-	profiles := make([]string, 0, len(profileSet))
-	for p := range profileSet {
-		profiles = append(profiles, p)
-	}
-	slices.Sort(profiles)
-
-	// Move "default" to the front
-	for i, p := range profiles {
-		if p == "default" && i > 0 {
-			profiles = append([]string{"default"}, append(profiles[:i], profiles[i+1:]...)...)
-			break
-		}
-	}
-
-	return profiles
-}
-
-// parseProfilesFromFile parses profile names from AWS credentials or config file
-func parseProfilesFromFile(path string, profiles map[string]struct{}, isConfig bool) {
-	file, err := os.Open(path)
-	if err != nil {
-		return
-	}
-	defer func() { _ = file.Close() }()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			section := line[1 : len(line)-1]
-			// In config file, profiles are prefixed with "profile "
-			if isConfig {
-				if strings.HasPrefix(section, "profile ") {
-					profiles[strings.TrimPrefix(section, "profile ")] = struct{}{}
-				} else if section == "default" {
-					profiles["default"] = struct{}{}
-				}
-			} else {
-				// In credentials file, section name is the profile name
-				profiles[section] = struct{}{}
-			}
-		}
-	}
 }

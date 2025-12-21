@@ -2,17 +2,24 @@ package app
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
+	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/ui"
 	"github.com/clawscli/claws/internal/view"
 )
+
+// clearErrorMsg is sent to clear transient errors after a timeout
+type clearErrorMsg struct{}
 
 // App is the main application model
 // appStyles holds cached lipgloss styles for performance
@@ -80,8 +87,10 @@ func New(ctx context.Context, reg *registry.Registry) *App {
 
 // Init implements tea.Model
 func (a *App) Init() tea.Cmd {
-	// Initialize config (detect region from IMDS)
-	_ = config.Global().Init(a.ctx)
+	// Initialize AWS context (detect region from IMDS, fetch account ID)
+	if err := aws.InitContext(a.ctx); err != nil {
+		config.Global().AddWarning("AWS init failed: " + err.Error())
+	}
 
 	// Show warnings if any
 	if len(config.Global().Warnings()) > 0 {
@@ -212,11 +221,11 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 
 		case key.Matches(msg, a.keys.Profile):
-			profileSelector := view.NewProfileSelector()
+			profileBrowser := view.NewResourceBrowserWithType(a.ctx, a.registry, "local", "profile")
 			if a.currentView != nil {
 				a.viewStack = append(a.viewStack, a.currentView)
 			}
-			a.currentView = profileSelector
+			a.currentView = profileBrowser
 			return a, tea.Batch(
 				a.currentView.Init(),
 				a.currentView.SetSize(a.width, a.height-2),
@@ -241,9 +250,16 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case view.ErrorMsg:
 		log.Error("application error", "error", msg.Err)
 		a.err = msg.Err
+		// Auto-clear transient errors after 3 seconds
+		return a, tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+			return clearErrorMsg{}
+		})
+
+	case clearErrorMsg:
+		a.err = nil
 		return a, nil
 
-	case view.RegionChangedMsg:
+	case navmsg.RegionChangedMsg:
 		log.Info("region changed", "region", msg.Region)
 		// Pop views until we find a refreshable one (ResourceBrowser or ServiceBrowser)
 		for len(a.viewStack) > 0 {
@@ -263,12 +279,22 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.currentView.SetSize(a.width, a.height-2),
 		)
 
-	case view.ProfileChangedMsg:
-		log.Info("profile changed", "profile", msg.Profile)
-		// Pop views until we find a refreshable one (ResourceBrowser or ServiceBrowser)
+	case navmsg.ProfileChangedMsg:
+		log.Info("profile changed", "selection", msg.Selection.DisplayName(), "currentView", fmt.Sprintf("%T", a.currentView), "stackDepth", len(a.viewStack))
+		// Refresh region and account ID for the new selection
+		if err := aws.RefreshContext(a.ctx); err != nil {
+			log.Debug("failed to refresh profile config", "error", err)
+		}
+		// Pop views until we find a refreshable AWS resource view (skip local service views)
 		for len(a.viewStack) > 0 {
 			a.currentView = a.viewStack[len(a.viewStack)-1]
 			a.viewStack = a.viewStack[:len(a.viewStack)-1]
+
+			// Skip local service views (profile browser) - we want to return to AWS resources
+			if rb, ok := a.currentView.(*view.ResourceBrowser); ok && rb.Service() == "local" {
+				continue
+			}
+
 			if r, ok := a.currentView.(view.Refreshable); ok && r.CanRefresh() {
 				return a, tea.Batch(
 					a.currentView.SetSize(a.width, a.height-2),

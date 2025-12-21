@@ -14,12 +14,11 @@ func init() {
 	// Register actions for ECS tasks
 	action.Global.Register("ecs", "tasks", []action.Action{
 		{
-			Name:      "Exec",
-			Shortcut:  "x",
-			Type:      action.ActionTypeExec,
-			Command:   `aws ecs execute-command --cluster "${CLUSTER}" --task "${ARN}" --container "${CONTAINER}" --interactive --command "/bin/sh"`,
-			Confirm:   false,
-			Dangerous: false,
+			Name:     "Exec",
+			Shortcut: "x",
+			Type:     action.ActionTypeExec,
+			Command:  `aws ecs execute-command --cluster "${CLUSTER}" --task "${ARN}" --container "${CONTAINER}" --interactive --command "/bin/sh"`,
+			Confirm:  true,
 		},
 		{
 			Name:      "Stop",
@@ -27,7 +26,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "StopTask",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

@@ -19,8 +19,7 @@ func init() {
 			Shortcut:  "+",
 			Type:      action.ActionTypeAPI,
 			Operation: "ScaleUp",
-			Confirm:   false,
-			Dangerous: false,
+			Confirm:   true,
 		},
 		{
 			Name:      "Scale Down",
@@ -28,7 +27,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "ScaleDown",
 			Confirm:   true,
-			Dangerous: false,
 		},
 		{
 			Name:      "Force Deploy",
@@ -36,7 +34,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "ForceNewDeployment",
 			Confirm:   true,
-			Dangerous: false,
 		},
 		{
 			Name:      "Enable Exec",
@@ -44,7 +41,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "EnableExecuteCommand",
 			Confirm:   true,
-			Dangerous: false,
 		},
 		{
 			Name:      "Delete",
@@ -52,7 +48,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteService",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

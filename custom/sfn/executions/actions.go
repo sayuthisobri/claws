@@ -19,7 +19,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "StopExecution",
 			Confirm:   true,
-			Dangerous: false,
 		},
 	})
 

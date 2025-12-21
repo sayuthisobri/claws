@@ -38,9 +38,16 @@ Thumbs.db
 
 # AI assistant
 CLAUDE.md
+AGENTS.md
 .serena/
 
 # Build artifacts
 dist/
 bin/
 claws.log
+
+# lsmcp cache
+.lsmcp/cache
+
+# Node.js
+node_modules/

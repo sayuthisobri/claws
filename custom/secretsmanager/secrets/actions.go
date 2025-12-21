@@ -13,12 +13,11 @@ import (
 func init() {
 	action.Global.Register("secretsmanager", "secrets", []action.Action{
 		{
-			Name:      "View Value",
-			Shortcut:  "v",
-			Type:      action.ActionTypeExec,
-			Command:   `aws secretsmanager get-secret-value --secret-id "${ID}" --query 'SecretString' --output text | less`,
-			Confirm:   true,
-			Dangerous: false,
+			Name:     "View Value",
+			Shortcut: "v",
+			Type:     action.ActionTypeExec,
+			Command:  `aws secretsmanager get-secret-value --secret-id "${ID}" --query 'SecretString' --output text | less`,
+			Confirm:  true,
 		},
 		{
 			Name:     "Describe (JSON)",
@@ -32,7 +31,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteSecret",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

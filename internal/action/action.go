@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
 )
@@ -16,7 +17,9 @@ import (
 // Sentinel errors for action execution
 var (
 	ErrEmptyCommand        = errors.New("empty command")
+	ErrEmptyOperation      = errors.New("API action has no Operation defined")
 	ErrInvalidResourceType = errors.New("invalid resource type")
+	ErrReadOnlyDenied      = errors.New("action denied in read-only mode")
 )
 
 // UnknownOperationError creates an error for unknown operations
@@ -43,25 +46,48 @@ const (
 	ActionTypeView ActionType = "view" // Navigate to another view
 )
 
+// Action names - used for read-only allowlist and cross-package references
+const (
+	ActionNameSSOLogin = "SSO Login"
+	ActionNameLogin    = "Login" // :login command - console login
+
+	// Read-only safe exec actions (read-only operations)
+	ActionNameTailLogs      = "Tail Logs"
+	ActionNameViewRecent1h  = "View Recent (1h)"
+	ActionNameViewRecent24h = "View Recent (24h)"
+)
+
 // Action defines an action that can be performed on a resource
 type Action struct {
 	Name      string
 	Shortcut  string
 	Type      ActionType
-	Command   string            // For exec type
-	Operation string            // For api type
-	Target    string            // For view type
-	Confirm   bool              // Require confirmation
-	Dangerous bool              // Show warning
-	Requires  []string          // Required dependencies
-	Vars      map[string]string // Variable mappings
+	Command   string // For exec type
+	Operation string // For api type
+	Target    string // For view type
+	Confirm   bool   // Require confirmation
+
+	// SkipAWSEnv skips AWS env injection for exec commands.
+	// Use for commands that need to access ~/.aws files directly (e.g., aws sso login).
+	SkipAWSEnv bool
+
+	// Filter returns true if this action should be shown for the given resource.
+	// If nil, the action is always shown.
+	Filter func(resource dao.Resource) bool
+
+	// PostExecFollowUp generates a tea.Msg after successful exec completion.
+	// Called by ActionMenu when an exec action returns success.
+	// If nil, no follow-up message is sent.
+	// Example: profile switch after SSO login returns msg.ProfileChangedMsg.
+	PostExecFollowUp func(resource dao.Resource) any
 }
 
 // ActionResult represents the result of an action
 type ActionResult struct {
-	Success bool
-	Message string
-	Error   error
+	Success     bool
+	Message     string
+	Error       error
+	FollowUpMsg any // Optional tea.Msg to send after action completes
 }
 
 // ExecutorFunc is a function that executes an action on a resource
@@ -82,7 +108,39 @@ func NewRegistry() *Registry {
 	}
 }
 
-// Register registers actions for a resource type
+// ReadOnlyAllowlist defines API operations allowed in read-only mode.
+// - View actions: always allowed (navigation only)
+// - Exec actions: allowed only if Name is in ReadOnlyExecAllowlist
+// - API actions: allowed only if Operation is in this list
+//
+// Security rationale for each allowed operation:
+var ReadOnlyAllowlist = map[string]bool{
+	// DetectStackDrift: Triggers analysis only, no stack modifications
+	"DetectStackDrift": true,
+	// InvokeFunctionDryRun: Validation mode, function is not actually invoked
+	"InvokeFunctionDryRun": true,
+	// SwitchProfile: Local config change only, no AWS resource modifications
+	"SwitchProfile": true,
+}
+
+// ReadOnlyExecAllowlist defines exec actions allowed in read-only mode.
+// Auth workflows and read-only operations are allowed.
+// Arbitrary shells (ECS Exec, SSM Session) are denied - they provide
+// interactive access that could modify resources.
+//
+// Security rationale for each allowed action:
+var ReadOnlyExecAllowlist = map[string]bool{
+	// SSO Login: Authentication workflow, no resource changes
+	ActionNameSSOLogin: true,
+	// Login: Opens browser for console login, no resource changes
+	ActionNameLogin: true,
+	// Log viewing: Read-only CloudWatch Logs access
+	ActionNameTailLogs:      true,
+	ActionNameViewRecent1h:  true,
+	ActionNameViewRecent24h: true,
+}
+
+// Register registers actions for a resource type.
 func (r *Registry) Register(service, resource string, actions []Action) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -123,6 +181,30 @@ func RegisterExecutor(service, resource string, executor ExecutorFunc) {
 func ExecuteWithDAO(ctx context.Context, action Action, resource dao.Resource, service, resourceType string) ActionResult {
 	log.Info("executing action", "action", action.Name, "type", action.Type, "service", service, "resourceType", resourceType, "resourceID", resource.GetID())
 
+	// Validate API action configuration before read-only check (better diagnostics)
+	if action.Type == ActionTypeAPI && action.Operation == "" {
+		log.Error("API action missing Operation", "action", action.Name, "service", service, "resourceType", resourceType)
+		return ActionResult{Success: false, Error: ErrEmptyOperation}
+	}
+
+	// Read-only enforcement at execution layer
+	if config.Global().ReadOnly() {
+		switch action.Type {
+		case ActionTypeView:
+			// always allowed
+		case ActionTypeExec:
+			if !ReadOnlyExecAllowlist[action.Name] {
+				log.Info("read-only denied exec action", "action", action.Name)
+				return ActionResult{Success: false, Error: ErrReadOnlyDenied}
+			}
+		case ActionTypeAPI:
+			if !ReadOnlyAllowlist[action.Operation] {
+				log.Info("read-only denied API action", "operation", action.Operation)
+				return ActionResult{Success: false, Error: ErrReadOnlyDenied}
+			}
+		}
+	}
+
 	var result ActionResult
 	switch action.Type {
 	case ActionTypeExec:
@@ -161,6 +243,9 @@ func executeExec(ctx context.Context, action Action, resource dao.Resource) Acti
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
+	if !action.SkipAWSEnv {
+		setAWSEnv(execCmd)
+	}
 
 	err = execCmd.Run()
 	if err != nil {

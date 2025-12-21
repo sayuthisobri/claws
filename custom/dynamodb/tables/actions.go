@@ -20,7 +20,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "ScaleUpRCU",
 			Confirm:   true,
-			Dangerous: false,
 		},
 		{
 			Name:      "Scale Up WCU",
@@ -28,7 +27,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "ScaleUpWCU",
 			Confirm:   true,
-			Dangerous: false,
 		},
 		{
 			Name:      "Switch to On-Demand",
@@ -36,7 +34,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "SwitchToOnDemand",
 			Confirm:   true,
-			Dangerous: false,
 		},
 		{
 			Name:      "Switch to Provisioned",
@@ -44,7 +41,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "SwitchToProvisioned",
 			Confirm:   true,
-			Dangerous: false,
 		},
 		{
 			Name:      "Delete",
@@ -52,7 +48,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteTable",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

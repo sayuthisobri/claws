@@ -18,8 +18,7 @@ func init() {
 			Shortcut:  "E",
 			Type:      action.ActionTypeAPI,
 			Operation: "EnableRule",
-			Confirm:   false,
-			Dangerous: false,
+			Confirm:   true,
 		},
 		{
 			Name:      "Disable",
@@ -27,7 +26,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DisableRule",
 			Confirm:   true,
-			Dangerous: false,
 		},
 		{
 			Name:      "Delete",
@@ -35,7 +33,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteRule",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

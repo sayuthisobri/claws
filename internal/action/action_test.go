@@ -2,8 +2,11 @@ package action
 
 import (
 	"context"
+	"os/exec"
+	"strings"
 	"testing"
 
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 )
 
@@ -241,6 +244,35 @@ func TestRegistry(t *testing.T) {
 	got = registry.Get("ec2", "nonexistent")
 	if got != nil {
 		t.Errorf("Get() for nonexistent key should return nil, got %v", got)
+	}
+}
+
+func TestReadOnlyAllowlist(t *testing.T) {
+	// Verify expected operations are in the allowlist
+	expected := []string{
+		"DetectStackDrift",     // CloudFormation: read-only drift detection
+		"InvokeFunctionDryRun", // Lambda: validation only
+		"SwitchProfile",        // local/profile: switch active profile
+	}
+
+	for _, op := range expected {
+		if !ReadOnlyAllowlist[op] {
+			t.Errorf("ReadOnlyAllowlist should contain %q", op)
+		}
+	}
+
+	// Verify dangerous operations are NOT in allowlist
+	dangerous := []string{
+		"DeleteStack",
+		"StopInstances",
+		"TerminateInstances",
+		"InvokeFunction",
+	}
+
+	for _, op := range dangerous {
+		if ReadOnlyAllowlist[op] {
+			t.Errorf("ReadOnlyAllowlist should NOT contain %q", op)
+		}
 	}
 }
 
@@ -487,9 +519,6 @@ func TestAction_Struct(t *testing.T) {
 		Operation: "TestOp",
 		Target:    "ec2/instances",
 		Confirm:   true,
-		Dangerous: true,
-		Requires:  []string{"dep1", "dep2"},
-		Vars:      map[string]string{"key": "value"},
 	}
 
 	if action.Name != "Test" {
@@ -504,13 +533,433 @@ func TestAction_Struct(t *testing.T) {
 	if !action.Confirm {
 		t.Error("Confirm should be true")
 	}
-	if !action.Dangerous {
-		t.Error("Dangerous should be true")
+}
+
+func TestSetAWSEnv(t *testing.T) {
+	tests := []struct {
+		name          string
+		mode          string // "sdk_default", "env_only", "named_profile"
+		profileName   string
+		region        string
+		baseEnv       []string
+		wantProfile   string // expected AWS_PROFILE value, "" means not set
+		wantNoProfile bool   // true if AWS_PROFILE should be removed
+		wantRegion    string // expected AWS_REGION value, "" means not modified
+		wantDefRegion string // expected AWS_DEFAULT_REGION value
+	}{
+		{
+			name:          "SDKDefault preserves existing AWS_PROFILE",
+			mode:          "sdk_default",
+			region:        "",
+			baseEnv:       []string{"AWS_PROFILE=existing", "PATH=/usr/bin"},
+			wantProfile:   "existing",
+			wantNoProfile: false,
+		},
+		{
+			name:          "SDKDefault with region injects both region vars",
+			mode:          "sdk_default",
+			region:        "us-west-2",
+			baseEnv:       []string{"PATH=/usr/bin"},
+			wantProfile:   "",
+			wantNoProfile: false,
+			wantRegion:    "us-west-2",
+			wantDefRegion: "us-west-2",
+		},
+		{
+			name:          "NamedProfile sets AWS_PROFILE",
+			mode:          "named_profile",
+			profileName:   "myprofile",
+			region:        "",
+			baseEnv:       []string{"PATH=/usr/bin"},
+			wantProfile:   "myprofile",
+			wantNoProfile: false,
+		},
+		{
+			name:          "NamedProfile replaces existing AWS_PROFILE",
+			mode:          "named_profile",
+			profileName:   "newprofile",
+			region:        "",
+			baseEnv:       []string{"AWS_PROFILE=oldprofile", "PATH=/usr/bin"},
+			wantProfile:   "newprofile",
+			wantNoProfile: false,
+		},
+		{
+			name:          "NamedProfile with region sets both",
+			mode:          "named_profile",
+			profileName:   "myprofile",
+			region:        "ap-northeast-1",
+			baseEnv:       []string{"PATH=/usr/bin"},
+			wantProfile:   "myprofile",
+			wantNoProfile: false,
+			wantRegion:    "ap-northeast-1",
+			wantDefRegion: "ap-northeast-1",
+		},
+		{
+			name:          "EnvOnly removes AWS_PROFILE and ignores config files",
+			mode:          "env_only",
+			region:        "",
+			baseEnv:       []string{"AWS_PROFILE=toremove", "PATH=/usr/bin"},
+			wantProfile:   "",
+			wantNoProfile: true,
+		},
+		{
+			name:          "EnvOnly with region removes profile and sets region",
+			mode:          "env_only",
+			region:        "eu-west-1",
+			baseEnv:       []string{"AWS_PROFILE=toremove", "PATH=/usr/bin"},
+			wantProfile:   "",
+			wantNoProfile: true,
+			wantRegion:    "eu-west-1",
+			wantDefRegion: "eu-west-1",
+		},
+		{
+			name:          "EnvOnly sets config file env vars to /dev/null",
+			mode:          "env_only",
+			region:        "",
+			baseEnv:       []string{"PATH=/usr/bin"},
+			wantProfile:   "",
+			wantNoProfile: true,
+		},
+		{
+			name:          "Region replaces existing region vars",
+			mode:          "sdk_default",
+			region:        "sa-east-1",
+			baseEnv:       []string{"AWS_REGION=old", "AWS_DEFAULT_REGION=old", "PATH=/usr/bin"},
+			wantRegion:    "sa-east-1",
+			wantDefRegion: "sa-east-1",
+		},
+		{
+			name:          "Empty region preserves existing region vars",
+			mode:          "sdk_default",
+			region:        "",
+			baseEnv:       []string{"AWS_REGION=existing", "AWS_DEFAULT_REGION=existing", "PATH=/usr/bin"},
+			wantRegion:    "existing",
+			wantDefRegion: "existing",
+		},
 	}
-	if len(action.Requires) != 2 {
-		t.Errorf("Requires length = %d, want 2", len(action.Requires))
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup global config
+			cfg := config.Global()
+			switch tt.mode {
+			case "sdk_default":
+				cfg.UseSDKDefault()
+			case "env_only":
+				cfg.UseEnvOnly()
+			case "named_profile":
+				cfg.UseProfile(tt.profileName)
+			}
+			cfg.SetRegion(tt.region)
+
+			// Create command with base env
+			cmd := &exec.Cmd{Env: tt.baseEnv}
+
+			// Call setAWSEnv
+			setAWSEnv(cmd)
+
+			// Parse resulting env into map
+			envMap := make(map[string]string)
+			for _, e := range cmd.Env {
+				parts := strings.SplitN(e, "=", 2)
+				if len(parts) == 2 {
+					envMap[parts[0]] = parts[1]
+				}
+			}
+
+			// Check AWS_PROFILE
+			if tt.wantNoProfile {
+				if _, exists := envMap["AWS_PROFILE"]; exists {
+					t.Errorf("AWS_PROFILE should be removed, but found: %s", envMap["AWS_PROFILE"])
+				}
+			} else if tt.wantProfile != "" {
+				if envMap["AWS_PROFILE"] != tt.wantProfile {
+					t.Errorf("AWS_PROFILE = %q, want %q", envMap["AWS_PROFILE"], tt.wantProfile)
+				}
+			}
+
+			// Check AWS_REGION
+			if tt.wantRegion != "" {
+				if envMap["AWS_REGION"] != tt.wantRegion {
+					t.Errorf("AWS_REGION = %q, want %q", envMap["AWS_REGION"], tt.wantRegion)
+				}
+			}
+
+			// Check AWS_DEFAULT_REGION
+			if tt.wantDefRegion != "" {
+				if envMap["AWS_DEFAULT_REGION"] != tt.wantDefRegion {
+					t.Errorf("AWS_DEFAULT_REGION = %q, want %q", envMap["AWS_DEFAULT_REGION"], tt.wantDefRegion)
+				}
+			}
+
+			// Check PATH is preserved
+			if envMap["PATH"] != "/usr/bin" {
+				t.Errorf("PATH should be preserved, got %q", envMap["PATH"])
+			}
+
+			// Check EnvOnly sets config file vars to /dev/null
+			if tt.mode == "env_only" {
+				if envMap["AWS_CONFIG_FILE"] != "/dev/null" {
+					t.Errorf("AWS_CONFIG_FILE = %q, want /dev/null", envMap["AWS_CONFIG_FILE"])
+				}
+				if envMap["AWS_SHARED_CREDENTIALS_FILE"] != "/dev/null" {
+					t.Errorf("AWS_SHARED_CREDENTIALS_FILE = %q, want /dev/null", envMap["AWS_SHARED_CREDENTIALS_FILE"])
+				}
+			}
+		})
 	}
-	if action.Vars["key"] != "value" {
-		t.Errorf("Vars[key] = %q, want %q", action.Vars["key"], "value")
-	}
+}
+
+func TestReadOnlyEnforcement_ExecuteWithDAO(t *testing.T) {
+	t.Run("read-only blocks non-allowlisted API action", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		action := Action{
+			Name:      "Terminate",
+			Type:      ActionTypeAPI,
+			Operation: "TerminateInstances", // Not in ReadOnlyAllowlist
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "i-123"}, "ec2", "instances")
+
+		if result.Success {
+			t.Error("read-only should block non-allowlisted API action")
+		}
+		if result.Error != ErrReadOnlyDenied {
+			t.Errorf("Error = %v, want %v", result.Error, ErrReadOnlyDenied)
+		}
+	})
+
+	t.Run("read-only allows allowlisted API action", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		// Register a test executor
+		Global.RegisterExecutor("test", "readonly", func(ctx context.Context, action Action, resource dao.Resource) ActionResult {
+			return ActionResult{Success: true, Message: "executed"}
+		})
+
+		action := Action{
+			Name:      "SwitchProfile",
+			Type:      ActionTypeAPI,
+			Operation: "SwitchProfile", // In ReadOnlyAllowlist
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "test", "readonly")
+
+		if !result.Success {
+			t.Errorf("read-only should allow allowlisted API action, got error: %v", result.Error)
+		}
+	})
+
+	t.Run("read-only blocks non-allowlisted exec action", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		action := Action{
+			Name:    "SSM Session",
+			Type:    ActionTypeExec,
+			Command: "aws ssm start-session --target ${ID}", // Not in ReadOnlyExecAllowlist
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "i-123"}, "ec2", "instances")
+
+		if result.Success {
+			t.Error("read-only should block non-allowlisted exec action")
+		}
+		if result.Error != ErrReadOnlyDenied {
+			t.Errorf("Error = %v, want %v", result.Error, ErrReadOnlyDenied)
+		}
+	})
+
+	t.Run("read-only allows allowlisted exec action", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		action := Action{
+			Name:    ActionNameSSOLogin,
+			Type:    ActionTypeExec,
+			Command: "echo test", // Use harmless command for test
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "local", "profile")
+
+		// Should pass read-only gate (but may fail later for other reasons)
+		if result.Error == ErrReadOnlyDenied {
+			t.Error("read-only should not block allowlisted exec action")
+		}
+	})
+
+	t.Run("read-only always allows view actions", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		action := Action{
+			Name:   "View Details",
+			Type:   ActionTypeView,
+			Target: "ec2/instances",
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "ec2", "instances")
+
+		// View actions are always allowed - should not return ErrReadOnlyDenied
+		if result.Error == ErrReadOnlyDenied {
+			t.Error("read-only should not block view actions")
+		}
+	})
+
+	t.Run("non-read-only allows all actions", func(t *testing.T) {
+		// Ensure read-only mode is disabled
+		config.Global().SetReadOnly(false)
+
+		// Register a test executor
+		Global.RegisterExecutor("test", "nonreadonly", func(ctx context.Context, action Action, resource dao.Resource) ActionResult {
+			return ActionResult{Success: true, Message: "executed"}
+		})
+
+		action := Action{
+			Name:      "Terminate",
+			Type:      ActionTypeAPI,
+			Operation: "TerminateInstances", // Not in ReadOnlyAllowlist
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "test", "nonreadonly")
+
+		if !result.Success {
+			t.Errorf("non-read-only should allow all actions, got error: %v", result.Error)
+		}
+	})
+}
+
+func TestReadOnlyEnforcement_SimpleExec(t *testing.T) {
+	t.Run("read-only blocks non-allowlisted exec", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		exec := &SimpleExec{
+			Command:    "echo test",
+			ActionName: "SSM Session", // Not in ReadOnlyExecAllowlist
+		}
+
+		err := exec.Run()
+
+		if err != ErrReadOnlyDenied {
+			t.Errorf("Error = %v, want %v", err, ErrReadOnlyDenied)
+		}
+	})
+
+	t.Run("read-only allows allowlisted exec", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		exec := &SimpleExec{
+			Command:    "echo test",
+			ActionName: ActionNameLogin, // In ReadOnlyExecAllowlist
+		}
+
+		err := exec.Run()
+
+		// Should not return ErrReadOnlyDenied (may succeed or fail for other reasons)
+		if err == ErrReadOnlyDenied {
+			t.Error("read-only should not block allowlisted exec")
+		}
+	})
+}
+
+func TestExecuteWithDAO_EmptyOperation_BeforeReadOnlyCheck(t *testing.T) {
+	// P3: Verify that empty Operation error is returned before read-only check
+	// This ensures better diagnostics - misconfigured actions show ErrEmptyOperation, not ErrReadOnlyDenied
+
+	t.Run("empty Operation returns ErrEmptyOperation even in read-only mode", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		action := Action{
+			Name:      "Misconfigured Action",
+			Type:      ActionTypeAPI,
+			Operation: "", // Empty - misconfigured
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "test", "resource")
+
+		if result.Success {
+			t.Error("action with empty Operation should fail")
+		}
+		// Key assertion: should get ErrEmptyOperation, NOT ErrReadOnlyDenied
+		if result.Error != ErrEmptyOperation {
+			t.Errorf("Error = %v, want %v (not ErrReadOnlyDenied)", result.Error, ErrEmptyOperation)
+		}
+	})
+
+	t.Run("empty Operation returns ErrEmptyOperation in non-read-only mode", func(t *testing.T) {
+		// Disable read-only mode
+		config.Global().SetReadOnly(false)
+
+		action := Action{
+			Name:      "Misconfigured Action",
+			Type:      ActionTypeAPI,
+			Operation: "", // Empty - misconfigured
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "test", "resource")
+
+		if result.Success {
+			t.Error("action with empty Operation should fail")
+		}
+		if result.Error != ErrEmptyOperation {
+			t.Errorf("Error = %v, want %v", result.Error, ErrEmptyOperation)
+		}
+	})
+}
+
+func TestReadOnlyEnforcement_ExecWithHeader(t *testing.T) {
+	t.Run("read-only blocks non-allowlisted exec", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		exec := &ExecWithHeader{
+			Command:    "echo test",
+			ActionName: "ECS Exec", // Not in ReadOnlyExecAllowlist
+			Resource:   &mockResource{id: "test", name: "test"},
+			Service:    "ecs",
+			ResType:    "tasks",
+		}
+
+		err := exec.Run()
+
+		if err != ErrReadOnlyDenied {
+			t.Errorf("Error = %v, want %v", err, ErrReadOnlyDenied)
+		}
+	})
+
+	t.Run("read-only allows allowlisted exec", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		exec := &ExecWithHeader{
+			Command:    "echo test",
+			ActionName: ActionNameSSOLogin, // In ReadOnlyExecAllowlist
+			Resource:   &mockResource{id: "test", name: "test"},
+			Service:    "local",
+			ResType:    "profile",
+		}
+
+		err := exec.Run()
+
+		// Should not return ErrReadOnlyDenied (may succeed or fail for other reasons)
+		if err == ErrReadOnlyDenied {
+			t.Error("read-only should not block allowlisted exec")
+		}
+	})
 }

@@ -17,6 +17,7 @@ func init() {
 			Shortcut:  "R",
 			Type:      action.ActionTypeAPI,
 			Operation: "StartInstances",
+			Confirm:   true,
 		},
 		{
 			Name:      "Stop",
@@ -38,7 +39,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "TerminateInstances",
 			Confirm:   true,
-			Dangerous: true,
 		},
 		{
 			Name:     "SSM Session",
