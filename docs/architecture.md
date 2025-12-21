@@ -123,7 +123,7 @@ registry.Global.RegisterCustom("ec2", "instances", registry.Entry{
 })
 ```
 
-**Service Aliases**: Short names for common services (e.g., `cfn` → `cloudformation`, `cf` → `cloudfront`)
+**Service Aliases**: Short names for common services (e.g., `cfn` → `cloudformation`, `sfn` → `stepfunctions`)
 
 **Sub-Resources**: Resources only accessible via navigation (e.g., `cloudformation/events`)
 
