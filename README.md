@@ -156,6 +156,16 @@ claws -l debug.log
 | `Esc` | Go back |
 | `Ctrl+c` | Quit |
 
+### Mouse Support
+
+| Action | Effect |
+|--------|--------|
+| Hover | Highlight item under cursor |
+| Click | Select item / navigate |
+| Scroll wheel | Scroll through lists |
+| Click on tabs | Switch resource type |
+| Back button | Navigate back (same as Esc) |
+
 ### Navigation Shortcuts (Context-dependent)
 
 | Key | Action |

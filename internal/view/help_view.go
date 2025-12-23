@@ -1,8 +1,9 @@
 package view
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/ui"
 )
 
@@ -26,9 +27,11 @@ func newHelpViewStyles() helpViewStyles {
 }
 
 type HelpView struct {
-	width  int
-	height int
-	styles helpViewStyles
+	width    int
+	height   int
+	styles   helpViewStyles
+	viewport viewport.Model
+	ready    bool
 }
 
 // NewHelpView creates a new HelpView
@@ -45,11 +48,13 @@ func (h *HelpView) Init() tea.Cmd {
 
 // Update implements tea.Model
 func (h *HelpView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return h, nil
+	var cmd tea.Cmd
+	h.viewport, cmd = h.viewport.Update(msg)
+	return h, cmd
 }
 
-// View implements tea.Model
-func (h *HelpView) View() string {
+// renderContent returns the help content for the viewport
+func (h *HelpView) renderContent() string {
 	s := h.styles
 
 	var out string
@@ -140,10 +145,32 @@ func (h *HelpView) View() string {
 	return out
 }
 
+// ViewString returns the view content as a string
+func (h *HelpView) ViewString() string {
+	if !h.ready {
+		return "Loading..."
+	}
+	return h.viewport.View()
+}
+
+// View implements tea.Model
+func (h *HelpView) View() tea.View {
+	return tea.NewView(h.ViewString())
+}
+
 // SetSize implements View
 func (h *HelpView) SetSize(width, height int) tea.Cmd {
 	h.width = width
 	h.height = height
+
+	if !h.ready {
+		h.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(height))
+		h.ready = true
+	} else {
+		h.viewport.SetWidth(width)
+		h.viewport.SetHeight(height)
+	}
+	h.viewport.SetContent(h.renderContent())
 	return nil
 }
 

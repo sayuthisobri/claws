@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/render"
@@ -28,7 +28,7 @@ func TestResourceBrowserFilterEsc(t *testing.T) {
 	}
 
 	// Send esc
-	escMsg := tea.KeyMsg{Type: tea.KeyEsc}
+	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
 	browser.Update(escMsg)
 
 	// Filter should now be inactive
@@ -51,7 +51,7 @@ func TestDetailViewEsc(t *testing.T) {
 	dv.SetSize(100, 50) // Initialize viewport
 
 	// Send esc to DetailView
-	escMsg := tea.KeyMsg{Type: tea.KeyEsc}
+	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
 	model, cmd := dv.Update(escMsg)
 
 	// DetailView should NOT handle esc (returns same model, nil cmd)
@@ -72,7 +72,7 @@ func TestDetailViewEscString(t *testing.T) {
 	dv.SetSize(100, 50)
 
 	// Test that "esc" string is correctly identified
-	escMsg := tea.KeyMsg{Type: tea.KeyEsc}
+	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
 
 	if escMsg.String() != "esc" {
 		t.Errorf("Expected esc key String() to be 'esc', got %q", escMsg.String())
@@ -217,13 +217,13 @@ func TestServiceBrowserNavigation(t *testing.T) {
 	}
 
 	// Test navigation with 'l' (right)
-	browser.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
+	browser.Update(tea.KeyPressMsg{Code: 'l'})
 	if browser.cursor != 1 {
 		t.Errorf("After 'l', cursor = %d, want 1", browser.cursor)
 	}
 
 	// Test navigation with 'h' (left)
-	browser.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
+	browser.Update(tea.KeyPressMsg{Code: 'h'})
 	if browser.cursor != 0 {
 		t.Errorf("After 'h', cursor = %d, want 0", browser.cursor)
 	}
@@ -247,14 +247,14 @@ func TestServiceBrowserFilter(t *testing.T) {
 	}
 
 	// Activate filter mode
-	browser.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	browser.Update(tea.KeyPressMsg{Text: "/", Code: '/'})
 	if !browser.filterActive {
 		t.Error("Expected filter to be active after '/'")
 	}
 
 	// Type 'ec2' in filter
 	for _, r := range "ec2" {
-		browser.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		browser.Update(tea.KeyPressMsg{Text: string(r), Code: r})
 	}
 
 	// Should have fewer items after filtering
@@ -263,13 +263,13 @@ func TestServiceBrowserFilter(t *testing.T) {
 	}
 
 	// Press Esc to exit filter mode
-	browser.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	browser.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if browser.filterActive {
 		t.Error("Expected filter to be inactive after Esc")
 	}
 
 	// Press 'c' to clear filter
-	browser.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	browser.Update(tea.KeyPressMsg{Code: 'c'})
 	if len(browser.flatItems) != initialCount {
 		t.Errorf("After clear, items = %d, want %d", len(browser.flatItems), initialCount)
 	}
@@ -316,7 +316,7 @@ func TestServiceBrowserCategoryNavigation(t *testing.T) {
 	}
 
 	// Test 'j' moves to next category
-	browser.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	browser.Update(tea.KeyPressMsg{Code: 'j'})
 
 	if len(browser.flatItems) > 1 && browser.cursor > 0 {
 		newCat := browser.flatItems[browser.cursor].categoryIdx
@@ -463,7 +463,7 @@ func TestCommandInput_Update_Esc(t *testing.T) {
 	ci.Activate()
 
 	// Send esc
-	escMsg := tea.KeyMsg{Type: tea.KeyEsc}
+	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
 	ci.Update(escMsg)
 
 	if ci.IsActive() {
@@ -479,7 +479,7 @@ func TestCommandInput_Update_Enter_Empty(t *testing.T) {
 	ci.Activate()
 
 	// Send enter with empty input (should navigate to service list)
-	enterMsg := tea.KeyMsg{Type: tea.KeyEnter}
+	enterMsg := tea.KeyPressMsg{Code: tea.KeyEnter}
 	_, nav := ci.Update(enterMsg)
 
 	if nav == nil {
@@ -501,7 +501,7 @@ func TestCommandInput_Update_Enter_Service(t *testing.T) {
 	ci.textInput.SetValue("ec2")
 
 	// Send enter
-	enterMsg := tea.KeyMsg{Type: tea.KeyEnter}
+	enterMsg := tea.KeyPressMsg{Code: tea.KeyEnter}
 	_, nav := ci.Update(enterMsg)
 
 	if nav == nil {
@@ -514,16 +514,15 @@ func TestCommandInput_Update_Enter_Service(t *testing.T) {
 func TestIsEscKey(t *testing.T) {
 	tests := []struct {
 		name string
-		msg  tea.KeyMsg
+		msg  tea.KeyPressMsg
 		want bool
 	}{
-		{"KeyEsc", tea.KeyMsg{Type: tea.KeyEsc}, true},
-		{"KeyEscape", tea.KeyMsg{Type: tea.KeyEscape}, true},
-		{"raw ESC byte", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{27}}, true},
-		{"Enter", tea.KeyMsg{Type: tea.KeyEnter}, false},
-		{"Space", tea.KeyMsg{Type: tea.KeySpace}, false},
-		{"letter a", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}}, false},
-		{"letter q", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}, false},
+		{"KeyEscape", tea.KeyPressMsg{Code: tea.KeyEscape}, true},
+		{"raw ESC byte", tea.KeyPressMsg{Code: 27}, true},
+		{"Enter", tea.KeyPressMsg{Code: tea.KeyEnter}, false},
+		{"Space", tea.KeyPressMsg{Code: tea.KeySpace}, false},
+		{"letter a", tea.KeyPressMsg{Code: 'a'}, false},
+		{"letter q", tea.KeyPressMsg{Code: 'q'}, false},
 	}
 
 	for _, tt := range tests {
@@ -822,7 +821,7 @@ func TestDiffView_Update_Esc(t *testing.T) {
 	dv.SetSize(100, 50)
 
 	// Send esc - should return nil cmd (let app handle back navigation)
-	escMsg := tea.KeyMsg{Type: tea.KeyEsc}
+	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
 	model, cmd := dv.Update(escMsg)
 
 	if model != dv {
@@ -842,7 +841,7 @@ func TestDiffView_Update_Q(t *testing.T) {
 	dv.SetSize(100, 50)
 
 	// Send 'q' - should also return nil cmd
-	qMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}
+	qMsg := tea.KeyPressMsg{Code: 'q'}
 	model, cmd := dv.Update(qMsg)
 
 	if model != dv {
@@ -861,9 +860,9 @@ func TestDiffView_View_NotReady(t *testing.T) {
 	dv := NewDiffView(ctx, left, right, nil, "ec2", "instances")
 
 	// Without SetSize, should show loading
-	view := dv.View()
+	view := dv.ViewString()
 	if view != "Loading..." {
-		t.Errorf("View() = %q, want 'Loading...'", view)
+		t.Errorf("ViewString() = %q, want 'Loading...'", view)
 	}
 }
 
@@ -985,6 +984,227 @@ func TestDetailViewLoadingPlaceholderReplacement(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Mouse interaction tests
+
+func TestServiceBrowserMouseHover(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	reg.RegisterCustom("ec2", "instances", registry.Entry{})
+	reg.RegisterCustom("s3", "buckets", registry.Entry{})
+
+	browser := NewServiceBrowser(ctx, reg)
+	browser.Update(browser.Init()())
+	browser.SetSize(100, 50)
+
+	initialCursor := browser.cursor
+
+	// Simulate mouse motion - exact position depends on layout
+	// Just verify it doesn't crash and cursor can change
+	motionMsg := tea.MouseMotionMsg{X: 30, Y: 5}
+	browser.Update(motionMsg)
+
+	// Cursor may or may not change depending on position
+	// Main test is that it doesn't panic
+	t.Logf("Cursor after hover: %d (was %d)", browser.cursor, initialCursor)
+}
+
+func TestServiceBrowserMouseClick(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	reg.RegisterCustom("ec2", "instances", registry.Entry{})
+	reg.RegisterCustom("s3", "buckets", registry.Entry{})
+
+	browser := NewServiceBrowser(ctx, reg)
+	browser.Update(browser.Init()())
+	browser.SetSize(100, 50)
+
+	// Simulate mouse click
+	clickMsg := tea.MouseClickMsg{X: 30, Y: 5, Button: tea.MouseLeft}
+	_, cmd := browser.Update(clickMsg)
+
+	// Click might trigger navigation or do nothing depending on position
+	t.Logf("Command after click: %v", cmd)
+}
+
+func TestServiceBrowserMouseWheel(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	reg.RegisterCustom("ec2", "instances", registry.Entry{})
+	reg.RegisterCustom("s3", "buckets", registry.Entry{})
+
+	browser := NewServiceBrowser(ctx, reg)
+	browser.Update(browser.Init()())
+	browser.SetSize(100, 50)
+
+	// Simulate mouse wheel
+	wheelMsg := tea.MouseWheelMsg{X: 30, Y: 5, Button: tea.MouseWheelDown}
+	browser.Update(wheelMsg)
+
+	// Should not panic
+}
+
+func TestResourceBrowserMouseHover(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+
+	// Add some test resources
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "instance-1"},
+		&mockResource{id: "i-2", name: "instance-2"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	initialCursor := browser.table.Cursor()
+
+	// Simulate mouse motion
+	motionMsg := tea.MouseMotionMsg{X: 30, Y: 10}
+	browser.Update(motionMsg)
+
+	t.Logf("Cursor after hover: %d (was %d)", browser.table.Cursor(), initialCursor)
+}
+
+func TestResourceBrowserMouseClick(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+
+	// Add some test resources
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "instance-1"},
+		&mockResource{id: "i-2", name: "instance-2"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	// Simulate mouse click
+	clickMsg := tea.MouseClickMsg{X: 30, Y: 10, Button: tea.MouseLeft}
+	_, cmd := browser.Update(clickMsg)
+
+	t.Logf("Command after click: %v", cmd)
+}
+
+func TestActionMenuMouseHover(t *testing.T) {
+	ctx := context.Background()
+	resource := &mockResource{id: "i-123", name: "test"}
+
+	menu := NewActionMenu(ctx, resource, "ec2", "instances")
+
+	initialCursor := menu.cursor
+
+	// Simulate mouse motion
+	motionMsg := tea.MouseMotionMsg{X: 10, Y: 5}
+	menu.Update(motionMsg)
+
+	t.Logf("Cursor after hover: %d (was %d)", menu.cursor, initialCursor)
+}
+
+func TestRegionSelectorMouseHover(t *testing.T) {
+	ctx := context.Background()
+
+	selector := NewRegionSelector(ctx)
+	selector.SetSize(100, 50)
+
+	// Simulate regions loaded
+	selector.regions = []string{"us-east-1", "us-west-2", "eu-west-1"}
+	selector.applyFilter()
+	selector.updateViewport()
+
+	initialCursor := selector.cursor
+
+	// Simulate mouse motion
+	motionMsg := tea.MouseMotionMsg{X: 10, Y: 3}
+	selector.Update(motionMsg)
+
+	t.Logf("Cursor after hover: %d (was %d)", selector.cursor, initialCursor)
+}
+
+func TestRegionSelectorMouseClick(t *testing.T) {
+	ctx := context.Background()
+
+	selector := NewRegionSelector(ctx)
+	selector.SetSize(100, 50)
+
+	// Simulate regions loaded
+	selector.regions = []string{"us-east-1", "us-west-2", "eu-west-1"}
+	selector.applyFilter()
+	selector.updateViewport()
+
+	// Simulate mouse click
+	clickMsg := tea.MouseClickMsg{X: 10, Y: 3, Button: tea.MouseLeft}
+	_, cmd := selector.Update(clickMsg)
+
+	// Click might trigger region selection
+	t.Logf("Command after click: %v", cmd)
+}
+
+func TestRegionSelectorEmptyFilter(t *testing.T) {
+	ctx := context.Background()
+
+	selector := NewRegionSelector(ctx)
+	selector.SetSize(100, 50)
+
+	// Simulate regions loaded
+	selector.regions = []string{"us-east-1", "us-west-2", "eu-west-1"}
+	selector.applyFilter()
+	selector.updateViewport()
+
+	// Apply filter that matches nothing
+	selector.filterText = "zzz-nonexistent"
+	selector.applyFilter()
+	selector.clampCursor()
+
+	if len(selector.filtered) != 0 {
+		t.Errorf("Expected 0 filtered regions, got %d", len(selector.filtered))
+	}
+	if selector.cursor != -1 {
+		t.Errorf("Expected cursor -1 for empty filter, got %d", selector.cursor)
+	}
+
+	// Clear filter - should restore regions
+	selector.filterText = ""
+	selector.applyFilter()
+	selector.clampCursor()
+
+	if len(selector.filtered) != 3 {
+		t.Errorf("Expected 3 filtered regions after clear, got %d", len(selector.filtered))
+	}
+	if selector.cursor < 0 {
+		t.Errorf("Expected cursor >= 0 after clear, got %d", selector.cursor)
+	}
+}
+
+func TestTagBrowserMouseHover(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewTagBrowser(ctx, reg, "")
+	browser.SetSize(100, 50)
+
+	// Set up test data
+	browser.resources = []taggedResource{
+		{Service: "ec2", ResourceType: "instances", Resource: &mockResource{id: "i-1", name: "test"}},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	initialCursor := browser.table.Cursor()
+
+	// Simulate mouse motion
+	motionMsg := tea.MouseMotionMsg{X: 30, Y: 8}
+	browser.Update(motionMsg)
+
+	t.Logf("Cursor after hover: %d (was %d)", browser.table.Cursor(), initialCursor)
 }
 
 // mockDiffProvider for testing getDiffSuggestions
