@@ -134,6 +134,7 @@ claws -l debug.log
 | Key | Action |
 |-----|--------|
 | `j` / `k` | Navigate up/down |
+| `h` / `l` | Navigate within category (service list) |
 | `Enter` / `d` | View resource details |
 | `:` | Command mode (e.g., `:ec2/instances`) |
 | `:` + `Enter` | Go to service list (home) |
