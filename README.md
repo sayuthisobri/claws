@@ -21,7 +21,7 @@ A terminal UI for AWS resource management 👮
 ## Features
 
 - **Interactive TUI** - Navigate AWS resources with vim-style keybindings
-- **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 60+ more services (158 resources total)
+- **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 65+ more services (163 resources total)
 - **Resource actions** - Start/stop instances, delete resources, tail logs
 - **Cross-resource navigation** - Jump from VPC to subnets, from Lambda to CloudWatch Logs
 - **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly, browse profiles with `:local/profile`
@@ -196,7 +196,7 @@ claws -l debug.log
 - For SSO profiles, use "SSO Login" action from profile browser (`P` or `:local/profile`)
 - Temporary `claws-*` profiles can be cleaned up from `~/.aws/credentials`
 
-## Supported Services (67 services, 158 resources)
+## Supported Services (69 services, 163 resources)
 
 ### Compute
 | Service | Resources |
@@ -297,7 +297,9 @@ claws -l debug.log
 | Service | Resources |
 |---------|-----------|
 | RI/SP | Reserved Instances, Savings Plans |
-| Cost Explorer | Costs |
+| Cost Explorer | Costs, Anomalies, Monitors |
+| Compute Optimizer | Summary, Recommendations |
+| Trusted Advisor | Recommendations |
 | Budgets | Budgets, Notifications |
 
 ### Local
@@ -332,6 +334,8 @@ Quick shortcuts for common services:
 | `pipeline`, `cp` | CodePipeline |
 | `waf` | WAF |
 | `ce`, `cost-explorer` | Cost Explorer |
+| `co` | Compute Optimizer |
+| `ta` | Trusted Advisor |
 | `ri` | Reserved Instances |
 | `sp` | Savings Plans |
 | `odcr` | Capacity Reservations |
