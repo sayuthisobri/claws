@@ -113,6 +113,44 @@ type Mergeable interface {
 	MergeFrom(original Resource)
 }
 
+// RegionalResource wraps a Resource with region metadata for multi-region queries
+type RegionalResource struct {
+	Resource
+	Region string
+}
+
+func (r *RegionalResource) GetRegion() string { return r.Region }
+
+// GetID returns region-qualified ID to avoid collisions across regions
+func (r *RegionalResource) GetID() string { return r.Region + ":" + r.Resource.GetID() }
+
+func (r *RegionalResource) GetName() string { return r.Resource.GetName() }
+
+// WrapWithRegion wraps a resource with region metadata
+func WrapWithRegion(res Resource, region string) *RegionalResource {
+	return &RegionalResource{Resource: res, Region: region}
+}
+
+type regionalResource interface {
+	GetRegion() string
+}
+
+// GetResourceRegion extracts region from a resource (returns "" if not regional)
+func GetResourceRegion(res Resource) string {
+	if rr, ok := res.(regionalResource); ok {
+		return rr.GetRegion()
+	}
+	return ""
+}
+
+// UnwrapResource returns the inner resource if wrapped, otherwise returns as-is
+func UnwrapResource(res Resource) Resource {
+	if rr, ok := res.(*RegionalResource); ok {
+		return rr.Resource
+	}
+	return res
+}
+
 // Context key types for filter values
 type filterContextKey string
 

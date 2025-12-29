@@ -64,8 +64,6 @@ func NewHeaderPanel() *HeaderPanel {
 	}
 }
 
-// renderContextLine renders the AWS context line with optional service/resource navigation.
-// If service is empty, only Profile/Account/Region are shown.
 func (h *HeaderPanel) renderContextLine(service, resourceType string) string {
 	cfg := config.Global()
 	s := h.styles
@@ -75,16 +73,20 @@ func (h *HeaderPanel) renderContextLine(service, resourceType string) string {
 	if accountID == "" {
 		accountID = "-"
 	}
-	region := cfg.Region()
-	if region == "" {
-		region = "-"
+
+	var regionDisplay string
+	regions := cfg.Regions()
+	if len(regions) == 0 {
+		regionDisplay = "-"
+	} else {
+		regionDisplay = strings.Join(regions, ", ")
 	}
 
 	line := s.label.Render("Profile: ") + s.value.Render(profileDisplay) +
 		s.dim.Render("  │  ") +
 		s.label.Render("Account: ") + s.value.Render(accountID) +
 		s.dim.Render("  │  ") +
-		s.label.Render("Region: ") + s.value.Render(region)
+		s.label.Render("Region: ") + s.value.Render(regionDisplay)
 
 	if service != "" {
 		displayName := registry.Global.GetDisplayName(service)

@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/clawscli/claws/internal/action"
+	"github.com/clawscli/claws/internal/dao"
 )
 
 // handleNavigation processes navigation key shortcuts
@@ -14,13 +15,14 @@ func (r *ResourceBrowser) handleNavigation(key string) (tea.Model, tea.Cmd) {
 		return nil, nil
 	}
 
+	ctx, resource := r.contextForResource(r.filtered[r.table.Cursor()])
+
 	helper := &NavigationHelper{
-		Ctx:      r.ctx,
+		Ctx:      ctx,
 		Registry: r.registry,
 		Renderer: r.renderer,
 	}
 
-	resource := r.filtered[r.table.Cursor()]
 	if cmd := helper.HandleKey(key, resource); cmd != nil {
 		return r, cmd
 	}
@@ -100,8 +102,13 @@ func (r *ResourceBrowser) StatusLine() string {
 		}
 	}
 
+	partialWarn := ""
+	if len(r.partialErrors) > 0 {
+		partialWarn = fmt.Sprintf(" ⚠%d region(s) failed", len(r.partialErrors))
+	}
+
 	if r.filterText != "" || filterInfo != "" {
-		base := fmt.Sprintf("%s/%s%s%s%s%s • %d/%d items • c:clear", r.service, r.resourceType, filterInfo, sortInfo, markInfo, autoReloadInfo, shown, total)
+		base := fmt.Sprintf("%s/%s%s%s%s%s%s • %d/%d items • c:clear", r.service, r.resourceType, filterInfo, sortInfo, markInfo, autoReloadInfo, partialWarn, shown, total)
 		if hasActions {
 			base += " a:actions"
 		}
@@ -112,7 +119,7 @@ func (r *ResourceBrowser) StatusLine() string {
 		return base
 	}
 
-	base := fmt.Sprintf("%s/%s%s%s%s • %d items • /:filter %s", r.service, r.resourceType, sortInfo, markInfo, autoReloadInfo, total, dHint)
+	base := fmt.Sprintf("%s/%s%s%s%s%s • %d items • /:filter %s", r.service, r.resourceType, sortInfo, markInfo, autoReloadInfo, partialWarn, total, dHint)
 	if hasActions {
 		base += " a:actions"
 	}
@@ -160,6 +167,6 @@ func (r *ResourceBrowser) getNavigationShortcuts() string {
 	}
 
 	helper := &NavigationHelper{Renderer: r.renderer}
-	resource := r.filtered[r.table.Cursor()]
+	resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
 	return helper.FormatShortcuts(resource)
 }
