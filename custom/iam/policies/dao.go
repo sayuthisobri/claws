@@ -2,13 +2,13 @@ package policies
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // PolicyDAO provides data access for IAM Policies
@@ -21,7 +21,7 @@ type PolicyDAO struct {
 func NewPolicyDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new iam/policies dao: %w", err)
+		return nil, apperrors.Wrap(err, "new iam/policies dao")
 	}
 	return &PolicyDAO{
 		BaseDAO: dao.NewBaseDAO("iam", "policies"),
@@ -54,7 +54,7 @@ func (d *PolicyDAO) ListPage(ctx context.Context, pageSize int, pageToken string
 
 	output, err := d.client.ListPolicies(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list policies: %w", err)
+		return nil, "", apperrors.Wrap(err, "list policies")
 	}
 
 	resources := make([]dao.Resource, len(output.Policies))
@@ -75,7 +75,7 @@ func (d *PolicyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		PolicyArn: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get policy %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get policy %s", id)
 	}
 
 	res := NewPolicyResource(*output.Policy)
@@ -106,13 +106,13 @@ func (d *PolicyDAO) Delete(ctx context.Context, id string) error {
 		PolicyArn: &id,
 	})
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
-			return fmt.Errorf("policy %s is in use (attached to roles/users/groups)", id)
+		if apperrors.IsResourceInUse(err) {
+			return apperrors.Wrapf(err, "policy %s is in use (attached to roles/users/groups)", id)
 		}
-		return fmt.Errorf("delete policy %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete policy %s", id)
 	}
 	return nil
 }

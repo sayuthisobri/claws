@@ -2,7 +2,6 @@ package queues
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -23,7 +23,7 @@ type QueueDAO struct {
 func NewQueueDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new sqs/queues dao: %w", err)
+		return nil, apperrors.Wrap(err, "new sqs/queues dao")
 	}
 	return &QueueDAO{
 		BaseDAO: dao.NewBaseDAO("sqs", "queues"),
@@ -37,7 +37,7 @@ func (d *QueueDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list queues: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list queues")
 		}
 		return output.QueueUrls, output.NextToken, nil
 	})
@@ -73,7 +73,7 @@ func (d *QueueDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		}
 		urlOutput, err := d.client.GetQueueUrl(ctx, urlInput)
 		if err != nil {
-			return nil, fmt.Errorf("get queue URL for %s: %w", id, err)
+			return nil, apperrors.Wrapf(err, "get queue URL for %s", id)
 		}
 		queueUrl = *urlOutput.QueueUrl
 	}
@@ -87,7 +87,7 @@ func (d *QueueDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.GetQueueAttributes(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get queue attributes %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get queue attributes %s", id)
 	}
 
 	return NewQueueResource(queueUrl, output.Attributes), nil
@@ -101,10 +101,10 @@ func (d *QueueDAO) Delete(ctx context.Context, id string) error {
 		}
 		urlOutput, err := d.client.GetQueueUrl(ctx, urlInput)
 		if err != nil {
-			if appaws.IsNotFound(err) {
+			if apperrors.IsNotFound(err) {
 				return nil // Already deleted
 			}
-			return fmt.Errorf("get queue URL for %s: %w", id, err)
+			return apperrors.Wrapf(err, "get queue URL for %s", id)
 		}
 		queueUrl = *urlOutput.QueueUrl
 	}
@@ -115,13 +115,13 @@ func (d *QueueDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteQueue(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
-			return fmt.Errorf("queue %s is in use", id)
+		if apperrors.IsResourceInUse(err) {
+			return apperrors.Wrapf(err, "queue %s is in use", id)
 		}
-		return fmt.Errorf("delete queue %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete queue %s", id)
 	}
 
 	return nil

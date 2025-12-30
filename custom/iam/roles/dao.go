@@ -2,13 +2,13 @@ package roles
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // RoleDAO provides data access for IAM Roles
@@ -21,7 +21,7 @@ type RoleDAO struct {
 func NewRoleDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new iam/roles dao: %w", err)
+		return nil, apperrors.Wrap(err, "new iam/roles dao")
 	}
 	return &RoleDAO{
 		BaseDAO: dao.NewBaseDAO("iam", "roles"),
@@ -53,7 +53,7 @@ func (d *RoleDAO) ListPage(ctx context.Context, pageSize int, pageToken string) 
 
 	output, err := d.client.ListRoles(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list roles: %w", err)
+		return nil, "", apperrors.Wrap(err, "list roles")
 	}
 
 	resources := make([]dao.Resource, len(output.Roles))
@@ -74,7 +74,7 @@ func (d *RoleDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		RoleName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get role %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get role %s", id)
 	}
 
 	res := NewRoleResource(*output.Role)
@@ -97,13 +97,13 @@ func (d *RoleDAO) Delete(ctx context.Context, id string) error {
 		RoleName: &id,
 	})
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
-			return fmt.Errorf("role %s is in use (has attached policies or is referenced)", id)
+		if apperrors.IsResourceInUse(err) {
+			return apperrors.Wrapf(err, "role %s is in use (has attached policies or is referenced)", id)
 		}
-		return fmt.Errorf("delete role %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete role %s", id)
 	}
 	return nil
 }
