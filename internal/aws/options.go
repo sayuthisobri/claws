@@ -3,7 +3,7 @@ package aws
 import (
 	"github.com/aws/aws-sdk-go-v2/config"
 
-	appconfig "github.com/sayuthisobri/claws/internal/config"
+	appconfig "github.com/clawscli/claws/internal/config"
 )
 
 // SelectionLoadOptions returns config load options based on the given ProfileSelection.

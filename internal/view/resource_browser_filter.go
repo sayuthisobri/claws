@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"strings"
 
-	appaws "github.com/sayuthisobri/claws/internal/aws"
-	"github.com/sayuthisobri/claws/internal/dao"
-	"github.com/sayuthisobri/claws/internal/filter"
-	"github.com/sayuthisobri/claws/internal/render"
+	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/filter"
+	"github.com/clawscli/claws/internal/render"
 )
 
 // applyFilter filters resources based on current filter settings

@@ -3,8 +3,8 @@ package stagesv2
 import (
 	"fmt"
 
-	"github.com/sayuthisobri/claws/internal/dao"
-	"github.com/sayuthisobri/claws/internal/render"
+	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/render"
 )
 
 // StageV2Renderer renders API Gateway HTTP/WebSocket API stages (v2)

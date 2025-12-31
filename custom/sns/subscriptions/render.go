@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/sayuthisobri/claws/internal/dao"
-	"github.com/sayuthisobri/claws/internal/render"
+	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/render"
 )
 
 // Ensure SubscriptionRenderer implements render.Navigator

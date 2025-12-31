@@ -8,7 +8,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in claws, please report it by [opening a GitHub Issue](https://github.com/sayuthisobri/claws/issues/new).
+If you discover a security vulnerability in claws, please report it by [opening a GitHub Issue](https://github.com/clawscli/claws/issues/new).
 
 Please include:
 - A description of the vulnerability

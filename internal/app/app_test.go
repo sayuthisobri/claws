@@ -6,8 +6,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sayuthisobri/claws/internal/registry"
-	"github.com/sayuthisobri/claws/internal/view"
+	"github.com/clawscli/claws/internal/registry"
+	"github.com/clawscli/claws/internal/view"
 )
 
 // MockView is a simple view for testing

@@ -1,8 +1,8 @@
 package licenses
 
 import (
-	"github.com/sayuthisobri/claws/internal/dao"
-	"github.com/sayuthisobri/claws/internal/render"
+	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/render"
 )
 
 // LicenseRenderer renders License Manager licenses.

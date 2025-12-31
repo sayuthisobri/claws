@@ -1,8 +1,8 @@
 package computeenvironments
 
 import (
-	"github.com/sayuthisobri/claws/internal/dao"
-	"github.com/sayuthisobri/claws/internal/render"
+	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/render"
 )
 
 // ComputeEnvironmentRenderer renders Batch compute environments.

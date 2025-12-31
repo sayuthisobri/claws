@@ -9,301 +9,301 @@ package main
 
 import (
 	// Access Analyzer
-	_ "github.com/sayuthisobri/claws/custom/accessanalyzer/analyzers"
-	_ "github.com/sayuthisobri/claws/custom/accessanalyzer/findings"
+	_ "github.com/clawscli/claws/custom/accessanalyzer/analyzers"
+	_ "github.com/clawscli/claws/custom/accessanalyzer/findings"
 
 	// ACM
-	_ "github.com/sayuthisobri/claws/custom/acm/certificates"
+	_ "github.com/clawscli/claws/custom/acm/certificates"
 
 	// API Gateway
-	_ "github.com/sayuthisobri/claws/custom/apigateway/httpapis"
-	_ "github.com/sayuthisobri/claws/custom/apigateway/restapis"
-	_ "github.com/sayuthisobri/claws/custom/apigateway/stages"
-	_ "github.com/sayuthisobri/claws/custom/apigateway/stagesv2"
+	_ "github.com/clawscli/claws/custom/apigateway/httpapis"
+	_ "github.com/clawscli/claws/custom/apigateway/restapis"
+	_ "github.com/clawscli/claws/custom/apigateway/stages"
+	_ "github.com/clawscli/claws/custom/apigateway/stagesv2"
 
 	// App Runner
-	_ "github.com/sayuthisobri/claws/custom/apprunner/operations"
-	_ "github.com/sayuthisobri/claws/custom/apprunner/services"
+	_ "github.com/clawscli/claws/custom/apprunner/operations"
+	_ "github.com/clawscli/claws/custom/apprunner/services"
 
 	// AppSync
-	_ "github.com/sayuthisobri/claws/custom/appsync/datasources"
-	_ "github.com/sayuthisobri/claws/custom/appsync/graphqlapis"
+	_ "github.com/clawscli/claws/custom/appsync/datasources"
+	_ "github.com/clawscli/claws/custom/appsync/graphqlapis"
 
 	// Athena
-	_ "github.com/sayuthisobri/claws/custom/athena/queryexecutions"
-	_ "github.com/sayuthisobri/claws/custom/athena/workgroups"
+	_ "github.com/clawscli/claws/custom/athena/queryexecutions"
+	_ "github.com/clawscli/claws/custom/athena/workgroups"
 
 	// Auto Scaling
-	_ "github.com/sayuthisobri/claws/custom/autoscaling/activities"
-	_ "github.com/sayuthisobri/claws/custom/autoscaling/groups"
+	_ "github.com/clawscli/claws/custom/autoscaling/activities"
+	_ "github.com/clawscli/claws/custom/autoscaling/groups"
 
 	// AWS Backup
-	_ "github.com/sayuthisobri/claws/custom/backup/backup-jobs"
-	_ "github.com/sayuthisobri/claws/custom/backup/copy-jobs"
-	_ "github.com/sayuthisobri/claws/custom/backup/plans"
-	_ "github.com/sayuthisobri/claws/custom/backup/protected-resources"
-	_ "github.com/sayuthisobri/claws/custom/backup/recovery-points"
-	_ "github.com/sayuthisobri/claws/custom/backup/restore-jobs"
-	_ "github.com/sayuthisobri/claws/custom/backup/selections"
-	_ "github.com/sayuthisobri/claws/custom/backup/vaults"
+	_ "github.com/clawscli/claws/custom/backup/backup-jobs"
+	_ "github.com/clawscli/claws/custom/backup/copy-jobs"
+	_ "github.com/clawscli/claws/custom/backup/plans"
+	_ "github.com/clawscli/claws/custom/backup/protected-resources"
+	_ "github.com/clawscli/claws/custom/backup/recovery-points"
+	_ "github.com/clawscli/claws/custom/backup/restore-jobs"
+	_ "github.com/clawscli/claws/custom/backup/selections"
+	_ "github.com/clawscli/claws/custom/backup/vaults"
 
 	// Batch
-	_ "github.com/sayuthisobri/claws/custom/batch/computeenvironments"
-	_ "github.com/sayuthisobri/claws/custom/batch/jobdefinitions"
-	_ "github.com/sayuthisobri/claws/custom/batch/jobqueues"
-	_ "github.com/sayuthisobri/claws/custom/batch/jobs"
+	_ "github.com/clawscli/claws/custom/batch/computeenvironments"
+	_ "github.com/clawscli/claws/custom/batch/jobdefinitions"
+	_ "github.com/clawscli/claws/custom/batch/jobqueues"
+	_ "github.com/clawscli/claws/custom/batch/jobs"
 
 	// Bedrock
-	_ "github.com/sayuthisobri/claws/custom/bedrock/foundationmodels"
-	_ "github.com/sayuthisobri/claws/custom/bedrock/guardrails"
-	_ "github.com/sayuthisobri/claws/custom/bedrock/inferenceprofiles"
+	_ "github.com/clawscli/claws/custom/bedrock/foundationmodels"
+	_ "github.com/clawscli/claws/custom/bedrock/guardrails"
+	_ "github.com/clawscli/claws/custom/bedrock/inferenceprofiles"
 
 	// Bedrock Agent
-	_ "github.com/sayuthisobri/claws/custom/bedrockagent/agents"
-	_ "github.com/sayuthisobri/claws/custom/bedrockagent/datasources"
-	_ "github.com/sayuthisobri/claws/custom/bedrockagent/flows"
-	_ "github.com/sayuthisobri/claws/custom/bedrockagent/knowledgebases"
-	_ "github.com/sayuthisobri/claws/custom/bedrockagent/prompts"
+	_ "github.com/clawscli/claws/custom/bedrockagent/agents"
+	_ "github.com/clawscli/claws/custom/bedrockagent/datasources"
+	_ "github.com/clawscli/claws/custom/bedrockagent/flows"
+	_ "github.com/clawscli/claws/custom/bedrockagent/knowledgebases"
+	_ "github.com/clawscli/claws/custom/bedrockagent/prompts"
 
 	// Bedrock AgentCore
-	_ "github.com/sayuthisobri/claws/custom/bedrockagentcore/endpoints"
-	_ "github.com/sayuthisobri/claws/custom/bedrockagentcore/runtimes"
-	_ "github.com/sayuthisobri/claws/custom/bedrockagentcore/versions"
+	_ "github.com/clawscli/claws/custom/bedrockagentcore/endpoints"
+	_ "github.com/clawscli/claws/custom/bedrockagentcore/runtimes"
+	_ "github.com/clawscli/claws/custom/bedrockagentcore/versions"
 
 	// Budgets
-	_ "github.com/sayuthisobri/claws/custom/budgets/budgets"
-	_ "github.com/sayuthisobri/claws/custom/budgets/notifications"
+	_ "github.com/clawscli/claws/custom/budgets/budgets"
+	_ "github.com/clawscli/claws/custom/budgets/notifications"
 
 	// CloudFormation
-	_ "github.com/sayuthisobri/claws/custom/cfn/events"
-	_ "github.com/sayuthisobri/claws/custom/cfn/outputs"
-	_ "github.com/sayuthisobri/claws/custom/cfn/resources"
-	_ "github.com/sayuthisobri/claws/custom/cfn/stacks"
+	_ "github.com/clawscli/claws/custom/cfn/events"
+	_ "github.com/clawscli/claws/custom/cfn/outputs"
+	_ "github.com/clawscli/claws/custom/cfn/resources"
+	_ "github.com/clawscli/claws/custom/cfn/stacks"
 
 	// CloudFront
-	_ "github.com/sayuthisobri/claws/custom/cloudfront/distributions"
+	_ "github.com/clawscli/claws/custom/cloudfront/distributions"
 
 	// CloudTrail
-	_ "github.com/sayuthisobri/claws/custom/cloudtrail/events"
-	_ "github.com/sayuthisobri/claws/custom/cloudtrail/trails"
+	_ "github.com/clawscli/claws/custom/cloudtrail/events"
+	_ "github.com/clawscli/claws/custom/cloudtrail/trails"
 
 	// CloudWatch
-	_ "github.com/sayuthisobri/claws/custom/cloudwatch/alarms"
-	_ "github.com/sayuthisobri/claws/custom/cloudwatch/loggroups"
-	_ "github.com/sayuthisobri/claws/custom/cloudwatch/logstreams"
+	_ "github.com/clawscli/claws/custom/cloudwatch/alarms"
+	_ "github.com/clawscli/claws/custom/cloudwatch/loggroups"
+	_ "github.com/clawscli/claws/custom/cloudwatch/logstreams"
 
 	// CodeBuild
-	_ "github.com/sayuthisobri/claws/custom/codebuild/builds"
-	_ "github.com/sayuthisobri/claws/custom/codebuild/projects"
+	_ "github.com/clawscli/claws/custom/codebuild/builds"
+	_ "github.com/clawscli/claws/custom/codebuild/projects"
 
 	// CodePipeline
-	_ "github.com/sayuthisobri/claws/custom/codepipeline/executions"
-	_ "github.com/sayuthisobri/claws/custom/codepipeline/pipelines"
+	_ "github.com/clawscli/claws/custom/codepipeline/executions"
+	_ "github.com/clawscli/claws/custom/codepipeline/pipelines"
 
 	// Cognito
-	_ "github.com/sayuthisobri/claws/custom/cognito/userpools"
-	_ "github.com/sayuthisobri/claws/custom/cognito/users"
+	_ "github.com/clawscli/claws/custom/cognito/userpools"
+	_ "github.com/clawscli/claws/custom/cognito/users"
 
 	// Compute Optimizer
-	_ "github.com/sayuthisobri/claws/custom/computeoptimizer/recommendations"
-	_ "github.com/sayuthisobri/claws/custom/computeoptimizer/summary"
+	_ "github.com/clawscli/claws/custom/computeoptimizer/recommendations"
+	_ "github.com/clawscli/claws/custom/computeoptimizer/summary"
 
 	// Config
-	_ "github.com/sayuthisobri/claws/custom/config/rules"
+	_ "github.com/clawscli/claws/custom/config/rules"
 
 	// Cost Explorer
-	_ "github.com/sayuthisobri/claws/custom/costexplorer/anomalies"
-	_ "github.com/sayuthisobri/claws/custom/costexplorer/costs"
-	_ "github.com/sayuthisobri/claws/custom/costexplorer/monitors"
+	_ "github.com/clawscli/claws/custom/costexplorer/anomalies"
+	_ "github.com/clawscli/claws/custom/costexplorer/costs"
+	_ "github.com/clawscli/claws/custom/costexplorer/monitors"
 
 	// DataSync
-	_ "github.com/sayuthisobri/claws/custom/datasync/locations"
-	_ "github.com/sayuthisobri/claws/custom/datasync/taskexecutions"
-	_ "github.com/sayuthisobri/claws/custom/datasync/tasks"
+	_ "github.com/clawscli/claws/custom/datasync/locations"
+	_ "github.com/clawscli/claws/custom/datasync/taskexecutions"
+	_ "github.com/clawscli/claws/custom/datasync/tasks"
 
 	// Detective
-	_ "github.com/sayuthisobri/claws/custom/detective/graphs"
-	_ "github.com/sayuthisobri/claws/custom/detective/investigations"
+	_ "github.com/clawscli/claws/custom/detective/graphs"
+	_ "github.com/clawscli/claws/custom/detective/investigations"
 
 	// Direct Connect
-	_ "github.com/sayuthisobri/claws/custom/directconnect/connections"
-	_ "github.com/sayuthisobri/claws/custom/directconnect/virtualinterfaces"
+	_ "github.com/clawscli/claws/custom/directconnect/connections"
+	_ "github.com/clawscli/claws/custom/directconnect/virtualinterfaces"
 
 	// DynamoDB
-	_ "github.com/sayuthisobri/claws/custom/dynamodb/tables"
+	_ "github.com/clawscli/claws/custom/dynamodb/tables"
 
 	// EC2
-	_ "github.com/sayuthisobri/claws/custom/ec2/capacityreservations"
-	_ "github.com/sayuthisobri/claws/custom/ec2/elasticips"
-	_ "github.com/sayuthisobri/claws/custom/ec2/images"
-	_ "github.com/sayuthisobri/claws/custom/ec2/instances"
-	_ "github.com/sayuthisobri/claws/custom/ec2/keypairs"
-	_ "github.com/sayuthisobri/claws/custom/ec2/launchtemplates"
-	_ "github.com/sayuthisobri/claws/custom/ec2/securitygroups"
-	_ "github.com/sayuthisobri/claws/custom/ec2/snapshots"
-	_ "github.com/sayuthisobri/claws/custom/ec2/volumes"
+	_ "github.com/clawscli/claws/custom/ec2/capacityreservations"
+	_ "github.com/clawscli/claws/custom/ec2/elasticips"
+	_ "github.com/clawscli/claws/custom/ec2/images"
+	_ "github.com/clawscli/claws/custom/ec2/instances"
+	_ "github.com/clawscli/claws/custom/ec2/keypairs"
+	_ "github.com/clawscli/claws/custom/ec2/launchtemplates"
+	_ "github.com/clawscli/claws/custom/ec2/securitygroups"
+	_ "github.com/clawscli/claws/custom/ec2/snapshots"
+	_ "github.com/clawscli/claws/custom/ec2/volumes"
 
 	// ECR
-	_ "github.com/sayuthisobri/claws/custom/ecr/images"
-	_ "github.com/sayuthisobri/claws/custom/ecr/repositories"
+	_ "github.com/clawscli/claws/custom/ecr/images"
+	_ "github.com/clawscli/claws/custom/ecr/repositories"
 
 	// ECS
-	_ "github.com/sayuthisobri/claws/custom/ecs/clusters"
-	_ "github.com/sayuthisobri/claws/custom/ecs/services"
-	_ "github.com/sayuthisobri/claws/custom/ecs/tasks"
+	_ "github.com/clawscli/claws/custom/ecs/clusters"
+	_ "github.com/clawscli/claws/custom/ecs/services"
+	_ "github.com/clawscli/claws/custom/ecs/tasks"
 
 	// ElastiCache
-	_ "github.com/sayuthisobri/claws/custom/elasticache/clusters"
+	_ "github.com/clawscli/claws/custom/elasticache/clusters"
 
 	// ELBv2 (ALB/NLB/GLB)
-	_ "github.com/sayuthisobri/claws/custom/elbv2/loadbalancers"
-	_ "github.com/sayuthisobri/claws/custom/elbv2/targetgroups"
-	_ "github.com/sayuthisobri/claws/custom/elbv2/targets"
+	_ "github.com/clawscli/claws/custom/elbv2/loadbalancers"
+	_ "github.com/clawscli/claws/custom/elbv2/targetgroups"
+	_ "github.com/clawscli/claws/custom/elbv2/targets"
 
 	// EMR
-	_ "github.com/sayuthisobri/claws/custom/emr/clusters"
-	_ "github.com/sayuthisobri/claws/custom/emr/steps"
+	_ "github.com/clawscli/claws/custom/emr/clusters"
+	_ "github.com/clawscli/claws/custom/emr/steps"
 
 	// EventBridge
-	_ "github.com/sayuthisobri/claws/custom/eventbridge/buses"
-	_ "github.com/sayuthisobri/claws/custom/eventbridge/rules"
+	_ "github.com/clawscli/claws/custom/eventbridge/buses"
+	_ "github.com/clawscli/claws/custom/eventbridge/rules"
 
 	// Firewall Manager
-	_ "github.com/sayuthisobri/claws/custom/fms/policies"
+	_ "github.com/clawscli/claws/custom/fms/policies"
 
 	// Glue
-	_ "github.com/sayuthisobri/claws/custom/glue/crawlers"
-	_ "github.com/sayuthisobri/claws/custom/glue/databases"
-	_ "github.com/sayuthisobri/claws/custom/glue/jobruns"
-	_ "github.com/sayuthisobri/claws/custom/glue/jobs"
-	_ "github.com/sayuthisobri/claws/custom/glue/tables"
+	_ "github.com/clawscli/claws/custom/glue/crawlers"
+	_ "github.com/clawscli/claws/custom/glue/databases"
+	_ "github.com/clawscli/claws/custom/glue/jobruns"
+	_ "github.com/clawscli/claws/custom/glue/jobs"
+	_ "github.com/clawscli/claws/custom/glue/tables"
 
 	// GuardDuty
-	_ "github.com/sayuthisobri/claws/custom/guardduty/detectors"
-	_ "github.com/sayuthisobri/claws/custom/guardduty/findings"
+	_ "github.com/clawscli/claws/custom/guardduty/detectors"
+	_ "github.com/clawscli/claws/custom/guardduty/findings"
 
 	// Health
-	_ "github.com/sayuthisobri/claws/custom/health/events"
+	_ "github.com/clawscli/claws/custom/health/events"
 
 	// IAM
-	_ "github.com/sayuthisobri/claws/custom/iam/groups"
-	_ "github.com/sayuthisobri/claws/custom/iam/instanceprofiles"
-	_ "github.com/sayuthisobri/claws/custom/iam/policies"
-	_ "github.com/sayuthisobri/claws/custom/iam/roles"
-	_ "github.com/sayuthisobri/claws/custom/iam/users"
+	_ "github.com/clawscli/claws/custom/iam/groups"
+	_ "github.com/clawscli/claws/custom/iam/instanceprofiles"
+	_ "github.com/clawscli/claws/custom/iam/policies"
+	_ "github.com/clawscli/claws/custom/iam/roles"
+	_ "github.com/clawscli/claws/custom/iam/users"
 
 	// Inspector
-	_ "github.com/sayuthisobri/claws/custom/inspector2/findings"
+	_ "github.com/clawscli/claws/custom/inspector2/findings"
 
 	// Kinesis
-	_ "github.com/sayuthisobri/claws/custom/kinesis/streams"
+	_ "github.com/clawscli/claws/custom/kinesis/streams"
 
 	// KMS
-	_ "github.com/sayuthisobri/claws/custom/kms/keys"
+	_ "github.com/clawscli/claws/custom/kms/keys"
 
 	// Lambda
-	_ "github.com/sayuthisobri/claws/custom/lambda/functions"
+	_ "github.com/clawscli/claws/custom/lambda/functions"
 
 	// License Manager
-	_ "github.com/sayuthisobri/claws/custom/licensemanager/configurations"
-	_ "github.com/sayuthisobri/claws/custom/licensemanager/grants"
-	_ "github.com/sayuthisobri/claws/custom/licensemanager/licenses"
+	_ "github.com/clawscli/claws/custom/licensemanager/configurations"
+	_ "github.com/clawscli/claws/custom/licensemanager/grants"
+	_ "github.com/clawscli/claws/custom/licensemanager/licenses"
 
 	// Macie
-	_ "github.com/sayuthisobri/claws/custom/macie/buckets"
-	_ "github.com/sayuthisobri/claws/custom/macie/classificationjobs"
-	_ "github.com/sayuthisobri/claws/custom/macie/findings"
+	_ "github.com/clawscli/claws/custom/macie/buckets"
+	_ "github.com/clawscli/claws/custom/macie/classificationjobs"
+	_ "github.com/clawscli/claws/custom/macie/findings"
 
 	// Network Firewall
-	_ "github.com/sayuthisobri/claws/custom/networkfirewall/firewallpolicies"
-	_ "github.com/sayuthisobri/claws/custom/networkfirewall/firewalls"
-	_ "github.com/sayuthisobri/claws/custom/networkfirewall/rulegroups"
+	_ "github.com/clawscli/claws/custom/networkfirewall/firewallpolicies"
+	_ "github.com/clawscli/claws/custom/networkfirewall/firewalls"
+	_ "github.com/clawscli/claws/custom/networkfirewall/rulegroups"
 
 	// OpenSearch
-	_ "github.com/sayuthisobri/claws/custom/opensearch/domains"
+	_ "github.com/clawscli/claws/custom/opensearch/domains"
 
 	// Organizations
-	_ "github.com/sayuthisobri/claws/custom/organizations/accounts"
-	_ "github.com/sayuthisobri/claws/custom/organizations/ous"
-	_ "github.com/sayuthisobri/claws/custom/organizations/policies"
-	_ "github.com/sayuthisobri/claws/custom/organizations/roots"
+	_ "github.com/clawscli/claws/custom/organizations/accounts"
+	_ "github.com/clawscli/claws/custom/organizations/ous"
+	_ "github.com/clawscli/claws/custom/organizations/policies"
+	_ "github.com/clawscli/claws/custom/organizations/roots"
 
 	// RDS
-	_ "github.com/sayuthisobri/claws/custom/rds/instances"
-	_ "github.com/sayuthisobri/claws/custom/rds/snapshots"
+	_ "github.com/clawscli/claws/custom/rds/instances"
+	_ "github.com/clawscli/claws/custom/rds/snapshots"
 
 	// Redshift
-	_ "github.com/sayuthisobri/claws/custom/redshift/clusters"
-	_ "github.com/sayuthisobri/claws/custom/redshift/snapshots"
+	_ "github.com/clawscli/claws/custom/redshift/clusters"
+	_ "github.com/clawscli/claws/custom/redshift/snapshots"
 
 	// RI/SP (Reserved Instances, Savings Plans)
-	_ "github.com/sayuthisobri/claws/custom/risp/reservedinstances"
-	_ "github.com/sayuthisobri/claws/custom/risp/savingsplans"
+	_ "github.com/clawscli/claws/custom/risp/reservedinstances"
+	_ "github.com/clawscli/claws/custom/risp/savingsplans"
 
 	// Route53
-	_ "github.com/sayuthisobri/claws/custom/route53/hostedzones"
-	_ "github.com/sayuthisobri/claws/custom/route53/recordsets"
+	_ "github.com/clawscli/claws/custom/route53/hostedzones"
+	_ "github.com/clawscli/claws/custom/route53/recordsets"
 
 	// S3
-	_ "github.com/sayuthisobri/claws/custom/s3/buckets"
+	_ "github.com/clawscli/claws/custom/s3/buckets"
 
 	// S3 Vectors
-	_ "github.com/sayuthisobri/claws/custom/s3vectors/buckets"
-	_ "github.com/sayuthisobri/claws/custom/s3vectors/indexes"
+	_ "github.com/clawscli/claws/custom/s3vectors/buckets"
+	_ "github.com/clawscli/claws/custom/s3vectors/indexes"
 
 	// SageMaker
-	_ "github.com/sayuthisobri/claws/custom/sagemaker/endpoints"
-	_ "github.com/sayuthisobri/claws/custom/sagemaker/models"
-	_ "github.com/sayuthisobri/claws/custom/sagemaker/notebooks"
-	_ "github.com/sayuthisobri/claws/custom/sagemaker/trainingjobs"
+	_ "github.com/clawscli/claws/custom/sagemaker/endpoints"
+	_ "github.com/clawscli/claws/custom/sagemaker/models"
+	_ "github.com/clawscli/claws/custom/sagemaker/notebooks"
+	_ "github.com/clawscli/claws/custom/sagemaker/trainingjobs"
 
 	// Secrets Manager
-	_ "github.com/sayuthisobri/claws/custom/secretsmanager/secrets"
+	_ "github.com/clawscli/claws/custom/secretsmanager/secrets"
 
 	// Security Hub
-	_ "github.com/sayuthisobri/claws/custom/securityhub/findings"
+	_ "github.com/clawscli/claws/custom/securityhub/findings"
 
 	// Service Quotas
-	_ "github.com/sayuthisobri/claws/custom/servicequotas/quotas"
-	_ "github.com/sayuthisobri/claws/custom/servicequotas/services"
+	_ "github.com/clawscli/claws/custom/servicequotas/quotas"
+	_ "github.com/clawscli/claws/custom/servicequotas/services"
 
 	// Step Functions
-	_ "github.com/sayuthisobri/claws/custom/sfn/executions"
-	_ "github.com/sayuthisobri/claws/custom/sfn/statemachines"
+	_ "github.com/clawscli/claws/custom/sfn/executions"
+	_ "github.com/clawscli/claws/custom/sfn/statemachines"
 
 	// SNS
-	_ "github.com/sayuthisobri/claws/custom/sns/subscriptions"
-	_ "github.com/sayuthisobri/claws/custom/sns/topics"
+	_ "github.com/clawscli/claws/custom/sns/subscriptions"
+	_ "github.com/clawscli/claws/custom/sns/topics"
 
 	// SQS
-	_ "github.com/sayuthisobri/claws/custom/sqs/queues"
+	_ "github.com/clawscli/claws/custom/sqs/queues"
 
 	// SSM
-	_ "github.com/sayuthisobri/claws/custom/ssm/parameters"
+	_ "github.com/clawscli/claws/custom/ssm/parameters"
 
 	// Transcribe
-	_ "github.com/sayuthisobri/claws/custom/transcribe/jobs"
+	_ "github.com/clawscli/claws/custom/transcribe/jobs"
 
 	// Transfer Family
-	_ "github.com/sayuthisobri/claws/custom/transfer/servers"
-	_ "github.com/sayuthisobri/claws/custom/transfer/users"
+	_ "github.com/clawscli/claws/custom/transfer/servers"
+	_ "github.com/clawscli/claws/custom/transfer/users"
 
 	// Trusted Advisor
-	_ "github.com/sayuthisobri/claws/custom/trustedadvisor/recommendations"
+	_ "github.com/clawscli/claws/custom/trustedadvisor/recommendations"
 
 	// VPC
-	_ "github.com/sayuthisobri/claws/custom/vpc/internetgateways"
-	_ "github.com/sayuthisobri/claws/custom/vpc/natgateways"
-	_ "github.com/sayuthisobri/claws/custom/vpc/routetables"
-	_ "github.com/sayuthisobri/claws/custom/vpc/subnets"
-	_ "github.com/sayuthisobri/claws/custom/vpc/tgwattachments"
-	_ "github.com/sayuthisobri/claws/custom/vpc/transitgateways"
-	_ "github.com/sayuthisobri/claws/custom/vpc/vpcendpoints"
-	_ "github.com/sayuthisobri/claws/custom/vpc/vpcs"
+	_ "github.com/clawscli/claws/custom/vpc/internetgateways"
+	_ "github.com/clawscli/claws/custom/vpc/natgateways"
+	_ "github.com/clawscli/claws/custom/vpc/routetables"
+	_ "github.com/clawscli/claws/custom/vpc/subnets"
+	_ "github.com/clawscli/claws/custom/vpc/tgwattachments"
+	_ "github.com/clawscli/claws/custom/vpc/transitgateways"
+	_ "github.com/clawscli/claws/custom/vpc/vpcendpoints"
+	_ "github.com/clawscli/claws/custom/vpc/vpcs"
 
 	// WAF
-	_ "github.com/sayuthisobri/claws/custom/wafv2/webacls"
+	_ "github.com/clawscli/claws/custom/wafv2/webacls"
 
 	// X-Ray
-	_ "github.com/sayuthisobri/claws/custom/xray/groups"
+	_ "github.com/clawscli/claws/custom/xray/groups"
 )

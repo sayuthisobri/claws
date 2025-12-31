@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sfn"
 
-	appaws "github.com/sayuthisobri/claws/internal/aws"
+	appaws "github.com/clawscli/claws/internal/aws"
 )
 
 // GetClient returns a Step Functions client configured for the current context

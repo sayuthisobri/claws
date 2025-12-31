@@ -3,8 +3,8 @@ package view
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sayuthisobri/claws/internal/dao"
-	"github.com/sayuthisobri/claws/internal/log"
+	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/log"
 )
 
 func (r *ResourceBrowser) handleResourcesLoaded(msg resourcesLoadedMsg) (tea.Model, tea.Cmd) {

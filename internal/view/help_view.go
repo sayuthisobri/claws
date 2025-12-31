@@ -5,7 +5,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sayuthisobri/claws/internal/ui"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // HelpView shows keybindings and help information

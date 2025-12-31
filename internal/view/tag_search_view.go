@@ -16,12 +16,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi"
 	tagtypes "github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi/types"
 
-	"github.com/sayuthisobri/claws/internal/aws"
-	"github.com/sayuthisobri/claws/internal/config"
-	"github.com/sayuthisobri/claws/internal/dao"
-	"github.com/sayuthisobri/claws/internal/log"
-	"github.com/sayuthisobri/claws/internal/registry"
-	"github.com/sayuthisobri/claws/internal/ui"
+	"github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/config"
+	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/log"
+	"github.com/clawscli/claws/internal/registry"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 const (

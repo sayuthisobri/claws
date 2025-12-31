@@ -2,7 +2,7 @@
 // These messages are sent between views and handled by the app layer.
 package msg
 
-import "github.com/sayuthisobri/claws/internal/config"
+import "github.com/clawscli/claws/internal/config"
 
 type ProfilesChangedMsg struct {
 	Selections []config.ProfileSelection

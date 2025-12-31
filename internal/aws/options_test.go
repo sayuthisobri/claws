@@ -3,7 +3,7 @@ package aws
 import (
 	"testing"
 
-	"github.com/sayuthisobri/claws/internal/config"
+	"github.com/clawscli/claws/internal/config"
 )
 
 func TestSelectionLoadOptions(t *testing.T) {

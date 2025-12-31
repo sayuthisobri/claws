@@ -9,7 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 
-	appaws "github.com/sayuthisobri/claws/internal/aws"
+	appaws "github.com/clawscli/claws/internal/aws"
 )
 
 func TestIntegration_VPCDAO_List(t *testing.T) {

@@ -7,10 +7,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/backup"
 	"github.com/aws/aws-sdk-go-v2/service/backup/types"
 
-	appaws "github.com/sayuthisobri/claws/internal/aws"
-	"github.com/sayuthisobri/claws/internal/dao"
-	apperrors "github.com/sayuthisobri/claws/internal/errors"
-	"github.com/sayuthisobri/claws/internal/render"
+	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
+	"github.com/clawscli/claws/internal/render"
 )
 
 // BackupJobDAO provides data access for AWS Backup jobs

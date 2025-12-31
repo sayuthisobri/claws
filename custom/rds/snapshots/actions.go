@@ -6,9 +6,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 
-	"github.com/sayuthisobri/claws/internal/action"
-	appaws "github.com/sayuthisobri/claws/internal/aws"
-	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/clawscli/claws/internal/action"
+	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/dao"
 )
 
 func init() {

@@ -6,8 +6,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sayuthisobri/claws/internal/action"
-	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/clawscli/claws/internal/action"
+	"github.com/clawscli/claws/internal/dao"
 )
 
 // handleNavigation processes navigation key shortcuts

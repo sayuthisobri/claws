@@ -6,10 +6,10 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 
-	ecsClient "github.com/sayuthisobri/claws/custom/ecs"
-	"github.com/sayuthisobri/claws/internal/action"
-	appaws "github.com/sayuthisobri/claws/internal/aws"
-	"github.com/sayuthisobri/claws/internal/dao"
+	ecsClient "github.com/clawscli/claws/custom/ecs"
+	"github.com/clawscli/claws/internal/action"
+	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/dao"
 )
 
 func init() {

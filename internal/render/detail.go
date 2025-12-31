@@ -6,7 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sayuthisobri/claws/internal/ui"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // Empty value placeholder constants for consistent display across detail views.

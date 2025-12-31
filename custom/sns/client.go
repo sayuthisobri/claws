@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 
-	appaws "github.com/sayuthisobri/claws/internal/aws"
+	appaws "github.com/clawscli/claws/internal/aws"
 )
 
 // GetClient returns an SNS client configured for the current context

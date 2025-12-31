@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sayuthisobri/claws/internal/config"
+	"github.com/clawscli/claws/internal/config"
 )
 
 // BuildSubprocessEnv constructs environment variables for AWS CLI subprocesses.

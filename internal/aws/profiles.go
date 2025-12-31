@@ -11,7 +11,7 @@ import (
 
 	"gopkg.in/ini.v1"
 
-	"github.com/sayuthisobri/claws/internal/log"
+	"github.com/clawscli/claws/internal/log"
 )
 
 // ProfileInfo contains basic profile metadata from ~/.aws files.

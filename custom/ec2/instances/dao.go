@@ -8,9 +8,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 
-	appaws "github.com/sayuthisobri/claws/internal/aws"
-	"github.com/sayuthisobri/claws/internal/dao"
-	apperrors "github.com/sayuthisobri/claws/internal/errors"
+	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // InstanceDAO provides data access for EC2 instances

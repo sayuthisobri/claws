@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sayuthisobri/claws/internal/config"
-	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/clawscli/claws/internal/config"
+	"github.com/clawscli/claws/internal/dao"
 )
 
 // mockResource implements dao.Resource for testing

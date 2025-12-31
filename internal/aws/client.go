@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 
-	appconfig "github.com/sayuthisobri/claws/internal/config"
+	appconfig "github.com/clawscli/claws/internal/config"
 )
 
 // CostExplorerRegion is the only region where Cost Explorer API is available.

@@ -1,4 +1,4 @@
-module github.com/sayuthisobri/claws
+module github.com/clawscli/claws
 
 go 1.25.4
 

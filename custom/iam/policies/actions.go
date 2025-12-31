@@ -6,9 +6,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 
-	appiam "github.com/sayuthisobri/claws/custom/iam"
-	"github.com/sayuthisobri/claws/internal/action"
-	"github.com/sayuthisobri/claws/internal/dao"
+	appiam "github.com/clawscli/claws/custom/iam"
+	"github.com/clawscli/claws/internal/action"
+	"github.com/clawscli/claws/internal/dao"
 )
 
 func init() {

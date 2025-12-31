@@ -9,10 +9,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sayuthisobri/claws/internal/app"
-	"github.com/sayuthisobri/claws/internal/config"
-	"github.com/sayuthisobri/claws/internal/log"
-	"github.com/sayuthisobri/claws/internal/registry"
+	"github.com/clawscli/claws/internal/app"
+	"github.com/clawscli/claws/internal/config"
+	"github.com/clawscli/claws/internal/log"
+	"github.com/clawscli/claws/internal/registry"
 )
 
 // version is set by ldflags during build

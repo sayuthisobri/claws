@@ -3,8 +3,8 @@ package targetgroups
 import (
 	"fmt"
 
-	"github.com/sayuthisobri/claws/internal/dao"
-	"github.com/sayuthisobri/claws/internal/render"
+	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/render"
 )
 
 // TargetGroupRenderer renders ELBv2 Target Groups

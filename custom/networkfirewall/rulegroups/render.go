@@ -3,8 +3,8 @@ package rulegroups
 import (
 	"fmt"
 
-	"github.com/sayuthisobri/claws/internal/dao"
-	"github.com/sayuthisobri/claws/internal/render"
+	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/render"
 )
 
 // RuleGroupRenderer renders Network Firewall rule groups.

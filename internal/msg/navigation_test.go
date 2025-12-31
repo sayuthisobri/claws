@@ -3,7 +3,7 @@ package msg
 import (
 	"testing"
 
-	"github.com/sayuthisobri/claws/internal/config"
+	"github.com/clawscli/claws/internal/config"
 )
 
 func TestProfilesChangedMsg(t *testing.T) {

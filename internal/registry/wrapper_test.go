@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/sayuthisobri/claws/internal/aws"
-	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/dao"
 )
 
 // MockDAO for testing wrapper functionality

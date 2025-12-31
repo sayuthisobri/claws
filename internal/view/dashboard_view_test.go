@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/sayuthisobri/claws/internal/registry"
-	"github.com/sayuthisobri/claws/internal/ui"
+	"github.com/clawscli/claws/internal/registry"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 func TestRenderBar(t *testing.T) {

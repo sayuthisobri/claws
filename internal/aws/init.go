@@ -6,7 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 
-	appconfig "github.com/sayuthisobri/claws/internal/config"
+	appconfig "github.com/clawscli/claws/internal/config"
 )
 
 // InitContext initializes AWS context by loading config and fetching account ID.

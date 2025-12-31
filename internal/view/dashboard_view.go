@@ -8,10 +8,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sayuthisobri/claws/internal/dao"
-	navmsg "github.com/sayuthisobri/claws/internal/msg"
-	"github.com/sayuthisobri/claws/internal/registry"
-	"github.com/sayuthisobri/claws/internal/ui"
+	"github.com/clawscli/claws/internal/dao"
+	navmsg "github.com/clawscli/claws/internal/msg"
+	"github.com/clawscli/claws/internal/registry"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 type hitArea struct {

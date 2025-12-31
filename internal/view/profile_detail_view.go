@@ -3,8 +3,8 @@ package view
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sayuthisobri/claws/internal/aws"
-	"github.com/sayuthisobri/claws/internal/render"
+	"github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/render"
 )
 
 type ProfileDetailView struct {

@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 
-	"github.com/sayuthisobri/claws/internal/render"
+	"github.com/clawscli/claws/internal/render"
 )
 
 func TestFetcher_buildQueries(t *testing.T) {

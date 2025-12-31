@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	ModulePrefix = "github.com/sayuthisobri/claws"
+	ModulePrefix = "github.com/clawscli/claws"
 	CustomDir    = "custom"
 )
 
