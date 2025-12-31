@@ -1,9 +1,60 @@
 package config
 
 import (
+	"maps"
 	"os"
+	"regexp"
 	"sync"
 )
+
+// Validation patterns
+var (
+	// regionPattern matches AWS region format: xx-xxxx-N (e.g., us-east-1, ap-northeast-1)
+	regionPattern = regexp.MustCompile(`^[a-z]{2}(-[a-z]+-\d|-(gov|iso|isob)-[a-z]+-\d)$`)
+
+	// accountIDPattern matches 12-digit AWS account IDs
+	accountIDPattern = regexp.MustCompile(`^\d{12}$`)
+
+	// profileNamePattern matches valid AWS profile names (alphanumeric, hyphen, underscore, period)
+	profileNamePattern = regexp.MustCompile(`^[\w\-.]+$`)
+)
+
+type ValidationError struct {
+	Field   string
+	Value   string
+	Message string
+}
+
+func (e *ValidationError) Error() string {
+	return e.Message
+}
+
+// IsValidRegion checks if the region name follows AWS region format.
+// Valid examples: us-east-1, eu-west-2, ap-northeast-1, us-gov-west-1
+func IsValidRegion(region string) bool {
+	if region == "" || len(region) > 25 {
+		return false
+	}
+	return regionPattern.MatchString(region)
+}
+
+// IsValidAccountID checks if the account ID is a 12-digit number.
+// Used internally to validate STS-fetched account IDs, not for user input.
+func IsValidAccountID(accountID string) bool {
+	if accountID == "" {
+		return true // Empty is allowed (not yet fetched)
+	}
+	return accountIDPattern.MatchString(accountID)
+}
+
+// IsValidProfileName checks if the profile name contains only valid characters.
+// Valid characters: alphanumeric, hyphen, underscore, period
+func IsValidProfileName(name string) bool {
+	if name == "" || len(name) > 128 {
+		return false
+	}
+	return profileNamePattern.MatchString(name)
+}
 
 // Profile resource ID constants for stable identification
 const (
@@ -125,18 +176,30 @@ func (s ProfileSelection) ID() string {
 
 // Config holds global application configuration
 type Config struct {
-	mu        sync.RWMutex
-	regions   []string
-	selection ProfileSelection
-	accountID string
-	warnings  []string
-	readOnly  bool
+	mu         sync.RWMutex
+	regions    []string
+	selections []ProfileSelection
+	accountIDs map[string]string
+	warnings   []string
+	readOnly   bool
 }
 
 var (
 	global   *Config
 	initOnce sync.Once
 )
+
+func withRLock[T any](mu *sync.RWMutex, fn func() T) T {
+	mu.RLock()
+	defer mu.RUnlock()
+	return fn()
+}
+
+func doWithLock(mu *sync.RWMutex, fn func()) {
+	mu.Lock()
+	defer mu.Unlock()
+	fn()
+}
 
 // Global returns the global config instance
 func Global() *Config {
@@ -146,54 +209,61 @@ func Global() *Config {
 	return global
 }
 
-// Region returns the first selected region (backward compatible)
 func (c *Config) Region() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if len(c.regions) == 0 {
-		return ""
-	}
-	return c.regions[0]
+	return withRLock(&c.mu, func() string {
+		if len(c.regions) == 0 {
+			return ""
+		}
+		return c.regions[0]
+	})
 }
 
 func (c *Config) Regions() []string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return append([]string(nil), c.regions...)
+	return withRLock(&c.mu, func() []string {
+		return append([]string(nil), c.regions...)
+	})
 }
 
-// SetRegion sets a single region
 func (c *Config) SetRegion(region string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.regions = []string{region}
+	doWithLock(&c.mu, func() { c.regions = []string{region} })
 }
 
 func (c *Config) SetRegions(regions []string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.regions = append([]string(nil), regions...)
+	doWithLock(&c.mu, func() { c.regions = append([]string(nil), regions...) })
 }
 
-// IsMultiRegion returns true if multiple regions are selected
 func (c *Config) IsMultiRegion() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return len(c.regions) > 1
+	return withRLock(&c.mu, func() bool { return len(c.regions) > 1 })
 }
 
-// Selection returns the current profile selection
 func (c *Config) Selection() ProfileSelection {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.selection
+	return withRLock(&c.mu, func() ProfileSelection {
+		if len(c.selections) == 0 {
+			return SDKDefault()
+		}
+		return c.selections[0]
+	})
 }
 
-// SetSelection sets the profile selection
+func (c *Config) Selections() []ProfileSelection {
+	return withRLock(&c.mu, func() []ProfileSelection {
+		if len(c.selections) == 0 {
+			return []ProfileSelection{SDKDefault()}
+		}
+		return append([]ProfileSelection(nil), c.selections...)
+	})
+}
+
 func (c *Config) SetSelection(sel ProfileSelection) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.selection = sel
+	doWithLock(&c.mu, func() { c.selections = []ProfileSelection{sel} })
+}
+
+func (c *Config) SetSelections(sels []ProfileSelection) {
+	doWithLock(&c.mu, func() { c.selections = append([]ProfileSelection(nil), sels...) })
+}
+
+func (c *Config) IsMultiProfile() bool {
+	return withRLock(&c.mu, func() bool { return len(c.selections) > 1 })
 }
 
 // UseSDKDefault sets SDK default credential mode
@@ -211,44 +281,74 @@ func (c *Config) UseProfile(name string) {
 	c.SetSelection(NamedProfile(name))
 }
 
-// AccountID returns the current AWS account ID
 func (c *Config) AccountID() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.accountID
+	return withRLock(&c.mu, func() string {
+		key := ProfileIDSDKDefault
+		if len(c.selections) > 0 {
+			key = c.selections[0].ID()
+		}
+		return c.accountIDs[key]
+	})
 }
 
-// SetAccountID sets the AWS account ID
+func (c *Config) AccountIDs() map[string]string {
+	return withRLock(&c.mu, func() map[string]string {
+		result := make(map[string]string, len(c.accountIDs))
+		maps.Copy(result, c.accountIDs)
+		return result
+	})
+}
+
 func (c *Config) SetAccountID(id string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.accountID = id
+	doWithLock(&c.mu, func() {
+		if c.accountIDs == nil {
+			c.accountIDs = make(map[string]string)
+		}
+		key := ProfileIDSDKDefault
+		if len(c.selections) > 0 {
+			key = c.selections[0].ID()
+		}
+		c.accountIDs[key] = id
+	})
 }
 
-// Warnings returns any startup warnings
+func (c *Config) SetAccountIDs(ids map[string]string) {
+	doWithLock(&c.mu, func() {
+		c.accountIDs = make(map[string]string, len(ids))
+		maps.Copy(c.accountIDs, ids)
+	})
+}
+
+func (c *Config) SetAccountIDForProfile(profileID, accountID string) {
+	doWithLock(&c.mu, func() {
+		if c.accountIDs == nil {
+			c.accountIDs = make(map[string]string)
+		}
+		c.accountIDs[profileID] = accountID
+	})
+}
+
+func (c *Config) GetAccountIDForProfile(profileID string) string {
+	return withRLock(&c.mu, func() string {
+		if c.accountIDs == nil {
+			return ""
+		}
+		return c.accountIDs[profileID]
+	})
+}
+
 func (c *Config) Warnings() []string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.warnings
+	return withRLock(&c.mu, func() []string { return c.warnings })
 }
 
-// ReadOnly returns whether the application is in read-only mode
 func (c *Config) ReadOnly() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.readOnly
+	return withRLock(&c.mu, func() bool { return c.readOnly })
 }
 
-// SetReadOnly sets the read-only mode
 func (c *Config) SetReadOnly(readOnly bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.readOnly = readOnly
+	doWithLock(&c.mu, func() { c.readOnly = readOnly })
 }
 
-// AddWarning adds a warning message
 func (c *Config) AddWarning(msg string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.warnings = append(c.warnings, msg)
+	doWithLock(&c.mu, func() { c.warnings = append(c.warnings, msg) })
 }

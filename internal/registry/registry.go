@@ -121,8 +121,6 @@ func defaultAliases() map[string]string {
 		"sp":            "risp/savings-plans",
 		"odcr":          "ec2/capacity-reservations",
 		"tgw":           "vpc/transit-gateways",
-		"profile":       "local/profile",
-		"profiles":      "local/profile",
 	}
 }
 
@@ -197,7 +195,6 @@ func defaultDisplayNames() map[string]string {
 		"xray":              "X-Ray",
 		"trustedadvisor":    "Trusted Advisor",
 		"computeoptimizer":  "Compute Optimizer",
-		"local":             "Local", // Not in service list, but used for header display
 	}
 }
 

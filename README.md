@@ -22,10 +22,11 @@ A terminal UI for AWS resource management 👮
 
 - **Interactive TUI** - Navigate AWS resources with vim-style keybindings
 - **Mouse support** - Click, scroll, hover for navigation
-- **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 65+ more services (164 resources total)
+- **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 65+ more services (163 resources total)
 - **Resource actions** - Start/stop instances, delete resources, tail logs
 - **Cross-resource navigation** - Jump from VPC to subnets, from Lambda to CloudWatch Logs
 - **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly
+- **Multi-profile selection** - Select multiple profiles with `P`, parallel fetch across accounts
 - **Multi-region selection** - Select multiple regions with `R`, parallel fetch with aggregated results
 - **Command mode** - Quick navigation with `:ec2/instances` syntax
 - **Tag search** - Browse all tagged resources across regions with `:tags` command
@@ -158,7 +159,7 @@ claws -l debug.log
 | `M` | Toggle inline metrics (EC2, RDS, Lambda) |
 | `Ctrl+r` | Refresh (including metrics) |
 | `R` | Select AWS region(s) (multi-select supported) |
-| `P` | Switch AWS profile |
+| `P` | Select AWS profile(s) (multi-select supported) |
 | `?` | Show help |
 | `Esc` | Go back |
 | `Ctrl+c` | Quit |
@@ -200,12 +201,25 @@ claws -l debug.log
 
 Selected regions are queried in parallel; resources display with Region column.
 
+### Profile Selector (`P` key)
+
+| Key | Action |
+|-----|--------|
+| `j` / `k` | Navigate up/down |
+| `Space` | Toggle profile selection |
+| `l` | SSO login for selected profile |
+| `L` | Console login for selected profile (`:login`) |
+| `/` | Filter profiles |
+| `Enter` | Apply selection |
+| `Esc` | Cancel |
+
+Selected profiles are queried in parallel; resources display with Profile and Account columns.
+
 ### Commands
 
 | Command | Action |
 |---------|--------|
-| `:login` | AWS console login (creates `claws-<timestamp>` profile) |
-| `:profile` | Browse and switch AWS profiles |
+| `:login [name]` | AWS console login (default: `claws-login` profile) |
 | `:ec2/instances` | Navigate to EC2 instances |
 | `:sort <col>` | Sort by column |
 | `:tag <filter>` | Filter by tag |
@@ -213,11 +227,11 @@ Selected regions are queried in parallel; resources display with Region column.
 | `:diff <n1> <n2>` | Compare two named resources |
 
 **Login Details:**
-- `:login` runs `aws login --remote` and creates a temporary profile
-- For SSO profiles, use "SSO Login" action from profile browser (`P` or `:profile`)
-- Temporary `claws-*` profiles can be cleaned up from `~/.aws/credentials`
+- `:login` runs `aws login --remote` using `claws-login` profile
+- `:login myprofile` uses the specified profile name instead
+- For SSO profiles, use `P` to open profile selector, then `l` for SSO login
 
-## Supported Services (69 services, 164 resources)
+## Supported Services (69 services, 163 resources)
 
 ### Compute
 | Service | Resources |
@@ -361,7 +375,6 @@ Quick shortcuts for common services:
 | `agent` | Bedrock Agent Agents |
 | `models` | Bedrock Foundation Models |
 | `guardrail` | Bedrock Guardrails |
-| `profile`, `profiles` | AWS Profiles |
 
 ## Configuration
 
