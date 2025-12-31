@@ -6,13 +6,13 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/clawscli/claws/custom/cloudwatch/alarms"
-	"github.com/clawscli/claws/custom/costexplorer/anomalies"
-	"github.com/clawscli/claws/custom/costexplorer/costs"
-	"github.com/clawscli/claws/custom/health/events"
-	"github.com/clawscli/claws/custom/securityhub/findings"
-	"github.com/clawscli/claws/custom/trustedadvisor/recommendations"
-	"github.com/clawscli/claws/internal/dao"
+	"github.com/sayuthisobri/claws/custom/cloudwatch/alarms"
+	"github.com/sayuthisobri/claws/custom/costexplorer/anomalies"
+	"github.com/sayuthisobri/claws/custom/costexplorer/costs"
+	"github.com/sayuthisobri/claws/custom/health/events"
+	"github.com/sayuthisobri/claws/custom/securityhub/findings"
+	"github.com/sayuthisobri/claws/custom/trustedadvisor/recommendations"
+	"github.com/sayuthisobri/claws/internal/dao"
 )
 
 type alarmItem struct {

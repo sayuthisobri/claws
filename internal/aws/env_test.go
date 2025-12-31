@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/clawscli/claws/internal/config"
+	"github.com/sayuthisobri/claws/internal/config"
 )
 
 func TestBuildSubprocessEnv(t *testing.T) {

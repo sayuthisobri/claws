@@ -6,9 +6,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 
-	appec2 "github.com/clawscli/claws/custom/ec2"
-	"github.com/clawscli/claws/internal/action"
-	"github.com/clawscli/claws/internal/dao"
+	appec2 "github.com/sayuthisobri/claws/custom/ec2"
+	"github.com/sayuthisobri/claws/internal/action"
+	"github.com/sayuthisobri/claws/internal/dao"
 )
 
 func init() {

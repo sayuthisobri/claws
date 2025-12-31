@@ -3,8 +3,8 @@ package services
 import (
 	"fmt"
 
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/render"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/render"
 )
 
 // ServiceRenderer renders App Runner services.

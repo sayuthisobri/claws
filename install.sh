@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="clawscli/claws"
+REPO="sayuthisobri/claws"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${VERSION:-}"
 

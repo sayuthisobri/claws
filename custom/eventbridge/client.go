@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 
-	appaws "github.com/clawscli/claws/internal/aws"
+	appaws "github.com/sayuthisobri/claws/internal/aws"
 )
 
 // GetClient returns an EventBridge client configured for the current context

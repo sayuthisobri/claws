@@ -9,9 +9,9 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/render"
-	"github.com/clawscli/claws/internal/ui"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/render"
+	"github.com/sayuthisobri/claws/internal/ui"
 )
 
 // DiffView displays side-by-side comparison of two resources

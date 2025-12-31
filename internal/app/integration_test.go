@@ -9,7 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/clawscli/claws/internal/registry"
+	"github.com/sayuthisobri/claws/internal/registry"
 )
 
 // TestEscKeyIntegration tests the actual esc key handling in a real bubbletea program

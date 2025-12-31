@@ -11,10 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/computeoptimizer/types"
 	"golang.org/x/sync/errgroup"
 
-	appaws "github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/dao"
-	apperrors "github.com/clawscli/claws/internal/errors"
-	"github.com/clawscli/claws/internal/log"
+	appaws "github.com/sayuthisobri/claws/internal/aws"
+	"github.com/sayuthisobri/claws/internal/dao"
+	apperrors "github.com/sayuthisobri/claws/internal/errors"
+	"github.com/sayuthisobri/claws/internal/log"
 )
 
 // RecommendationDAO provides data access for Compute Optimizer Recommendations.

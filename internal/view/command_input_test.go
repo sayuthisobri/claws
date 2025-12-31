@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/clawscli/claws/internal/registry"
+	"github.com/sayuthisobri/claws/internal/registry"
 )
 
 func TestCommandInput_NewAndBasics(t *testing.T) {

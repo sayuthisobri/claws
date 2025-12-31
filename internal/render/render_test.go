@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/clawscli/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/dao"
 )
 
 func TestFormatAge(t *testing.T) {

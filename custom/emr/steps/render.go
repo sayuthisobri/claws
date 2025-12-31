@@ -1,8 +1,8 @@
 package steps
 
 import (
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/render"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/render"
 )
 
 // StepRenderer renders EMR steps.

@@ -1,8 +1,8 @@
 package operations
 
 import (
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/render"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/render"
 )
 
 // OperationRenderer renders App Runner operations.

@@ -3,9 +3,9 @@ package natgateways
 import (
 	"time"
 
-	appaws "github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/render"
+	appaws "github.com/sayuthisobri/claws/internal/aws"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/render"
 )
 
 // Ensure NatGatewayRenderer implements render.Navigator

@@ -6,10 +6,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 
-	appaws "github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/dao"
-	apperrors "github.com/clawscli/claws/internal/errors"
-	"github.com/clawscli/claws/internal/log"
+	appaws "github.com/sayuthisobri/claws/internal/aws"
+	"github.com/sayuthisobri/claws/internal/dao"
+	apperrors "github.com/sayuthisobri/claws/internal/errors"
+	"github.com/sayuthisobri/claws/internal/log"
 )
 
 // KeyDAO provides data access for KMS keys

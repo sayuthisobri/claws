@@ -8,7 +8,7 @@ import (
 
 	"github.com/aws/smithy-go"
 
-	"github.com/clawscli/claws/internal/log"
+	"github.com/sayuthisobri/claws/internal/log"
 )
 
 // Kind represents the classification of an error.

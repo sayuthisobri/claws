@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/clawscli/claws/internal/genimports"
+	"github.com/sayuthisobri/claws/internal/genimports"
 )
 
 func TestAllRegisterPackagesImported(t *testing.T) {
@@ -73,7 +73,7 @@ func TestNoBlankImportsInMainGo(t *testing.T) {
 
 	for _, imp := range f.Imports {
 		path := strings.Trim(imp.Path.Value, `"`)
-		if strings.Contains(path, "clawscli/claws/custom/") {
+		if strings.Contains(path, "sayuthisobri/claws/custom/") {
 			if imp.Name != nil && imp.Name.Name == "_" {
 				t.Errorf("main.go should not contain blank imports from custom/. Found: %s", path)
 				t.Errorf("Move this import to imports_custom.go")
@@ -102,7 +102,7 @@ func TestAllImportsAreBlankImports(t *testing.T) {
 
 	for _, imp := range f.Imports {
 		path := strings.Trim(imp.Path.Value, `"`)
-		if !strings.Contains(path, "clawscli/claws/custom/") {
+		if !strings.Contains(path, "sayuthisobri/claws/custom/") {
 			continue
 		}
 

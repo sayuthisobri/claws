@@ -9,7 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
-	appaws "github.com/clawscli/claws/internal/aws"
+	appaws "github.com/sayuthisobri/claws/internal/aws"
 )
 
 func TestIntegration_BucketDAO_List(t *testing.T) {

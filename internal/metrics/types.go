@@ -1,6 +1,6 @@
 package metrics
 
-import "github.com/clawscli/claws/internal/render"
+import "github.com/sayuthisobri/claws/internal/render"
 
 // MetricResult holds metric data for a single resource.
 type MetricResult struct {

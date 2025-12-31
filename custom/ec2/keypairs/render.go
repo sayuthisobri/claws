@@ -1,9 +1,9 @@
 package keypairs
 
 import (
-	appaws "github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/render"
+	appaws "github.com/sayuthisobri/claws/internal/aws"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/render"
 )
 
 // KeyPairRenderer renders EC2 Key Pairs

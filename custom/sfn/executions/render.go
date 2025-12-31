@@ -3,8 +3,8 @@ package executions
 import (
 	"time"
 
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/render"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/render"
 )
 
 // Ensure ExecutionRenderer implements render.Navigator

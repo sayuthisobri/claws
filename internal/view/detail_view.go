@@ -9,12 +9,12 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/clawscli/claws/internal/action"
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/log"
-	"github.com/clawscli/claws/internal/registry"
-	"github.com/clawscli/claws/internal/render"
-	"github.com/clawscli/claws/internal/ui"
+	"github.com/sayuthisobri/claws/internal/action"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/log"
+	"github.com/sayuthisobri/claws/internal/registry"
+	"github.com/sayuthisobri/claws/internal/render"
+	"github.com/sayuthisobri/claws/internal/ui"
 )
 
 // DetailView displays detailed information about a single resource

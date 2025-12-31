@@ -4,11 +4,11 @@ import (
 	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
-	"github.com/clawscli/claws/internal/config"
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/metrics"
-	"github.com/clawscli/claws/internal/render"
-	"github.com/clawscli/claws/internal/ui"
+	"github.com/sayuthisobri/claws/internal/config"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/metrics"
+	"github.com/sayuthisobri/claws/internal/render"
+	"github.com/sayuthisobri/claws/internal/ui"
 )
 
 // buildTable constructs the table component with columns, rows, and styling.

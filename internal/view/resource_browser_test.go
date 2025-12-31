@@ -7,8 +7,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/registry"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/registry"
 )
 
 func TestResourceBrowserFilterEsc(t *testing.T) {

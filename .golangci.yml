@@ -48,7 +48,7 @@ linters:
 
 linters-settings:
   goimports:
-    local-prefixes: github.com/clawscli/claws
+    local-prefixes: github.com/sayuthisobri/claws
   gofmt:
     simplify: true
   goconst:

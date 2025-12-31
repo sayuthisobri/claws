@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/clawscli/claws/internal/action"
+	"github.com/sayuthisobri/claws/internal/action"
 )
 
 func TestActionMenuMouseHover(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/render"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/render"
 )
 
 var _ render.Navigator = (*AlarmRenderer)(nil)

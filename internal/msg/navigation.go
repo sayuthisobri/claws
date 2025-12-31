@@ -2,7 +2,7 @@
 // These messages are sent between views and handled by the app layer.
 package msg
 
-import "github.com/clawscli/claws/internal/config"
+import "github.com/sayuthisobri/claws/internal/config"
 
 // ProfileChangedMsg is sent when profile is changed.
 // Handled by app.go to refresh views with new credentials.

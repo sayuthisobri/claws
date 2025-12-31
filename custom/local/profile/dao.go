@@ -12,10 +12,10 @@ import (
 
 	"gopkg.in/ini.v1"
 
-	"github.com/clawscli/claws/internal/config"
-	"github.com/clawscli/claws/internal/dao"
-	apperrors "github.com/clawscli/claws/internal/errors"
-	"github.com/clawscli/claws/internal/log"
+	"github.com/sayuthisobri/claws/internal/config"
+	"github.com/sayuthisobri/claws/internal/dao"
+	apperrors "github.com/sayuthisobri/claws/internal/errors"
+	"github.com/sayuthisobri/claws/internal/log"
 )
 
 // ProfileData contains parsed profile information from ~/.aws files

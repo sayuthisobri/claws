@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/render"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/render"
 )
 
 // RecordSetRenderer renders Route53 record sets with custom columns

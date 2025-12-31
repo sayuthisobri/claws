@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/clawscli/claws/internal/action"
-	"github.com/clawscli/claws/internal/config"
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/msg"
+	"github.com/sayuthisobri/claws/internal/action"
+	"github.com/sayuthisobri/claws/internal/config"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/msg"
 )
 
 // Operation constants for profile actions

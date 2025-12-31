@@ -4,17 +4,16 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/clawscli/claws/internal/action"
-	"github.com/clawscli/claws/internal/config"
-	navmsg "github.com/clawscli/claws/internal/msg"
-	"github.com/clawscli/claws/internal/registry"
-	"github.com/clawscli/claws/internal/ui"
+	"github.com/sayuthisobri/claws/internal/action"
+	"github.com/sayuthisobri/claws/internal/config"
+	navmsg "github.com/sayuthisobri/claws/internal/msg"
+	"github.com/sayuthisobri/claws/internal/registry"
+	"github.com/sayuthisobri/claws/internal/ui"
 )
 
 // CommandInput handles command mode input
@@ -122,12 +121,14 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 			// Cycle through suggestions
 			if len(c.suggestions) > 0 {
 				c.textInput.SetValue(c.suggestions[c.suggIdx])
+				c.textInput.SetCursor(len(c.textInput.Value()))
 				c.suggIdx = (c.suggIdx + 1) % len(c.suggestions)
 			} else {
 				// Get fresh suggestions
 				c.updateSuggestions()
 				if len(c.suggestions) > 0 {
 					c.textInput.SetValue(c.suggestions[0])
+					c.textInput.SetCursor(len(c.textInput.Value()))
 					c.suggIdx = 1 % len(c.suggestions)
 				}
 			}
@@ -138,6 +139,7 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 			if len(c.suggestions) > 0 {
 				c.suggIdx = (c.suggIdx - 1 + len(c.suggestions)) % len(c.suggestions)
 				c.textInput.SetValue(c.suggestions[c.suggIdx])
+				c.textInput.SetCursor(len(c.textInput.Value()))
 			}
 			return nil, nil
 		}
@@ -212,6 +214,10 @@ func (c *CommandInput) SetDiffProvider(provider DiffCompletionProvider) {
 func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 	input := strings.TrimSpace(c.textInput.Value())
 
+	if strings.ToLower(input) == "q" || input == "quit" {
+		return tea.Quit, nil
+	}
+
 	// Empty input or home/pulse - go to dashboard
 	if input == "" || input == "home" || input == "pulse" {
 		dashboard := NewDashboardView(c.ctx, c.registry)
@@ -233,9 +239,10 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 	// Creates a temporary profile to avoid polluting existing profiles
 	// SkipAWSEnv=true ensures aws login writes to real ~/.aws files (not /dev/null in EnvOnly mode)
 	if input == "login" {
-		profileName := fmt.Sprintf("claws-%d", time.Now().Unix())
+		//profileName := fmt.Sprintf("claws-%d", time.Now().Unix())
 		exec := &action.SimpleExec{
-			Command:    fmt.Sprintf("aws login --remote --profile %s", profileName),
+			//Command:    fmt.Sprintf("aws login --profile %s", profileName),
+			Command:    fmt.Sprintf("aws sso login"),
 			ActionName: action.ActionNameLogin,
 			SkipAWSEnv: true,
 		}
@@ -244,9 +251,9 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 				return ErrorMsg{Err: err}
 			}
 			// Switch to the new profile
-			sel := config.NamedProfile(profileName)
-			config.Global().SetSelection(sel)
-			return navmsg.ProfileChangedMsg{Selection: sel}
+			//sel := config.NamedProfile(profileName)
+			//config.Global().SetSelection(sel)
+			return navmsg.ProfileChangedMsg{Selection: config.Global().Selection()}
 		}), nil
 	}
 
@@ -437,6 +444,11 @@ func (c *CommandInput) GetSuggestions() []string {
 		// Add "sort" command
 		if strings.HasPrefix("sort", input) {
 			suggestions = append(suggestions, "sort")
+		}
+
+		// Add "quit" command
+		if strings.HasPrefix("quit", input) {
+			suggestions = append(suggestions, "quit")
 		}
 
 		// Add "diff" command

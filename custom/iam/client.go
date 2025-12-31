@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 
-	appaws "github.com/clawscli/claws/internal/aws"
+	appaws "github.com/sayuthisobri/claws/internal/aws"
 )
 
 // GetClient returns an IAM client configured for the current context

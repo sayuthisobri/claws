@@ -10,13 +10,13 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/config"
-	"github.com/clawscli/claws/internal/log"
-	navmsg "github.com/clawscli/claws/internal/msg"
-	"github.com/clawscli/claws/internal/registry"
-	"github.com/clawscli/claws/internal/ui"
-	"github.com/clawscli/claws/internal/view"
+	"github.com/sayuthisobri/claws/internal/aws"
+	"github.com/sayuthisobri/claws/internal/config"
+	"github.com/sayuthisobri/claws/internal/log"
+	navmsg "github.com/sayuthisobri/claws/internal/msg"
+	"github.com/sayuthisobri/claws/internal/registry"
+	"github.com/sayuthisobri/claws/internal/ui"
+	"github.com/sayuthisobri/claws/internal/view"
 )
 
 // awsInitTimeout is the maximum time to wait for AWS context initialization

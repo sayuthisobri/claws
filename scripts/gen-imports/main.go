@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/clawscli/claws/internal/genimports"
+	"github.com/sayuthisobri/claws/internal/genimports"
 )
 
 const outputFileName = "cmd/claws/imports_custom.go"

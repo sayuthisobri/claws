@@ -4,8 +4,8 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/clawscli/claws/internal/action"
-	"github.com/clawscli/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/action"
+	"github.com/sayuthisobri/claws/internal/dao"
 )
 
 func (r *ResourceBrowser) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {

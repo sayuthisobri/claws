@@ -6,9 +6,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sfn"
 
-	sfnClient "github.com/clawscli/claws/custom/sfn"
-	"github.com/clawscli/claws/internal/action"
-	"github.com/clawscli/claws/internal/dao"
+	sfnClient "github.com/sayuthisobri/claws/custom/sfn"
+	"github.com/sayuthisobri/claws/internal/action"
+	"github.com/sayuthisobri/claws/internal/dao"
 )
 
 func init() {

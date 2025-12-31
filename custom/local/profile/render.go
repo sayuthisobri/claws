@@ -3,9 +3,9 @@ package profile
 import (
 	"strings"
 
-	"github.com/clawscli/claws/internal/config"
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/render"
+	"github.com/sayuthisobri/claws/internal/config"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/render"
 )
 
 // ProfileRenderer renders local AWS profiles

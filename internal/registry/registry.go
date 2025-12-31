@@ -7,8 +7,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/render"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/render"
 )
 
 // ServiceResource uniquely identifies a resource type within an AWS service.
@@ -95,6 +95,7 @@ func defaultAliases() map[string]string {
 		"quotas":        "service-quotas",
 		"apigw":         "apigateway",
 		"api":           "apigateway",
+		"lb":            "elbv2",
 		"elb":           "elbv2",
 		"alb":           "elbv2",
 		"nlb":           "elbv2",

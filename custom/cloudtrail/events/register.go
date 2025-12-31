@@ -1,6 +1,6 @@
 package events
 
-import "github.com/clawscli/claws/internal/registry"
+import "github.com/sayuthisobri/claws/internal/registry"
 
 func init() {
 	registry.Global.RegisterCustom("cloudtrail", "events", registry.Entry{

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/registry"
+	"github.com/sayuthisobri/claws/internal/aws"
+	"github.com/sayuthisobri/claws/internal/registry"
 )
 
 func TestFormatTags(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/clawscli/claws/internal/ui"
+	"github.com/sayuthisobri/claws/internal/ui"
 )
 
 const (

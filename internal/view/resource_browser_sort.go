@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/clawscli/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/dao"
 )
 
 // applySorting sorts the filtered resources by the selected column

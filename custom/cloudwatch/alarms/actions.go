@@ -6,9 +6,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 
-	cwClient "github.com/clawscli/claws/custom/cloudwatch"
-	"github.com/clawscli/claws/internal/action"
-	"github.com/clawscli/claws/internal/dao"
+	cwClient "github.com/sayuthisobri/claws/custom/cloudwatch"
+	"github.com/sayuthisobri/claws/internal/action"
+	"github.com/sayuthisobri/claws/internal/dao"
 )
 
 func init() {

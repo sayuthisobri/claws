@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/aws"
+	"github.com/sayuthisobri/claws/internal/dao"
 )
 
 // stripRegionPrefix removes region prefix from ID if it matches the expected region (format: "region:id" → "id")

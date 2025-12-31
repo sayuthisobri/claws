@@ -8,9 +8,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/costexplorer"
 	"github.com/aws/aws-sdk-go-v2/service/costexplorer/types"
 
-	appaws "github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/dao"
-	apperrors "github.com/clawscli/claws/internal/errors"
+	appaws "github.com/sayuthisobri/claws/internal/aws"
+	"github.com/sayuthisobri/claws/internal/dao"
+	apperrors "github.com/sayuthisobri/claws/internal/errors"
 )
 
 // AnomalyLookbackDays is the number of days to look back for anomalies.

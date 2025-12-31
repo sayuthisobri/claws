@@ -9,11 +9,11 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/config"
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/log"
-	"github.com/clawscli/claws/internal/render"
+	"github.com/sayuthisobri/claws/internal/aws"
+	"github.com/sayuthisobri/claws/internal/config"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/log"
+	"github.com/sayuthisobri/claws/internal/render"
 )
 
 const multiRegionFetchTimeout = 30 * time.Second

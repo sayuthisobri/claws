@@ -6,8 +6,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	appaws "github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/ui"
+	appaws "github.com/sayuthisobri/claws/internal/aws"
+	"github.com/sayuthisobri/claws/internal/ui"
 )
 
 const (

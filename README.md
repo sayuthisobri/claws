@@ -2,9 +2,9 @@
 
 A terminal UI for AWS resource management 👮
 
-[![CI](https://github.com/clawscli/claws/actions/workflows/ci.yml/badge.svg)](https://github.com/clawscli/claws/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/clawscli/claws)](https://github.com/clawscli/claws/releases/latest)
-[![Go Report Card](https://goreportcard.com/badge/github.com/clawscli/claws)](https://goreportcard.com/report/github.com/clawscli/claws)
+[![CI](https://github.com/sayuthisobri/claws/actions/workflows/ci.yml/badge.svg)](https://github.com/sayuthisobri/claws/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/sayuthisobri/claws)](https://github.com/sayuthisobri/claws/releases/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sayuthisobri/claws)](https://goreportcard.com/report/github.com/sayuthisobri/claws)
 [![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
@@ -46,49 +46,49 @@ brew install --cask claws
 ### Install Script (macOS/Linux)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/sayuthisobri/claws/main/install.sh | sh
 ```
 
 Options:
 ```bash
 # Install specific version
-curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh | VERSION=v0.1.6 sh
+curl -fsSL https://raw.githubusercontent.com/sayuthisobri/claws/main/install.sh | VERSION=v0.1.6 sh
 
 # Install to custom directory
-curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh | INSTALL_DIR=/usr/local/bin sh
+curl -fsSL https://raw.githubusercontent.com/sayuthisobri/claws/main/install.sh | INSTALL_DIR=/usr/local/bin sh
 ```
 
 > **Security Note:** Piping scripts directly to `sh` is convenient but bypasses inspection.
 > For increased security, download and review the script first:
 > ```bash
-> curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh -o install.sh
+> curl -fsSL https://raw.githubusercontent.com/sayuthisobri/claws/main/install.sh -o install.sh
 > less install.sh  # Review the script
 > sh install.sh
 > ```
 
 ### Download Binary
 
-Download from [GitHub Releases](https://github.com/clawscli/claws/releases/latest):
+Download from [GitHub Releases](https://github.com/sayuthisobri/claws/releases/latest):
 
 ```bash
 # macOS (Apple Silicon)
-curl -Lo claws.tar.gz https://github.com/clawscli/claws/releases/latest/download/claws-darwin-arm64.tar.gz
+curl -Lo claws.tar.gz https://github.com/sayuthisobri/claws/releases/latest/download/claws-darwin-arm64.tar.gz
 tar xzf claws.tar.gz && mv claws /usr/local/bin/
 
 # macOS (Intel)
-curl -Lo claws.tar.gz https://github.com/clawscli/claws/releases/latest/download/claws-darwin-amd64.tar.gz
+curl -Lo claws.tar.gz https://github.com/sayuthisobri/claws/releases/latest/download/claws-darwin-amd64.tar.gz
 tar xzf claws.tar.gz && mv claws /usr/local/bin/
 
 # Linux (x86_64)
-curl -Lo claws.tar.gz https://github.com/clawscli/claws/releases/latest/download/claws-linux-amd64.tar.gz
+curl -Lo claws.tar.gz https://github.com/sayuthisobri/claws/releases/latest/download/claws-linux-amd64.tar.gz
 tar xzf claws.tar.gz && sudo mv claws /usr/local/bin/
 
 # Linux (ARM64)
-curl -Lo claws.tar.gz https://github.com/clawscli/claws/releases/latest/download/claws-linux-arm64.tar.gz
+curl -Lo claws.tar.gz https://github.com/sayuthisobri/claws/releases/latest/download/claws-linux-arm64.tar.gz
 tar xzf claws.tar.gz && sudo mv claws /usr/local/bin/
 
 # Windows (PowerShell)
-Invoke-WebRequest -Uri https://github.com/clawscli/claws/releases/latest/download/claws-windows-amd64.zip -OutFile claws.zip
+Invoke-WebRequest -Uri https://github.com/sayuthisobri/claws/releases/latest/download/claws-windows-amd64.zip -OutFile claws.zip
 Expand-Archive claws.zip -DestinationPath .
 # Add to PATH or move to desired location
 ```
@@ -96,13 +96,13 @@ Expand-Archive claws.zip -DestinationPath .
 ### Go Install
 
 ```bash
-go install github.com/clawscli/claws/cmd/claws@latest
+go install github.com/sayuthisobri/claws/cmd/claws@latest
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/clawscli/claws.git
+git clone https://github.com/sayuthisobri/claws.git
 cd claws
 go build -o claws ./cmd/claws
 ```

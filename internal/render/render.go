@@ -6,8 +6,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/ui"
+	"github.com/sayuthisobri/claws/internal/dao"
+	"github.com/sayuthisobri/claws/internal/ui"
 )
 
 // Column defines a table column configuration
