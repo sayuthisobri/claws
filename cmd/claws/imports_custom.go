@@ -209,9 +209,6 @@ import (
 	_ "github.com/sayuthisobri/claws/custom/licensemanager/grants"
 	_ "github.com/sayuthisobri/claws/custom/licensemanager/licenses"
 
-	// Local
-	_ "github.com/sayuthisobri/claws/custom/local/profile"
-
 	// Macie
 	_ "github.com/sayuthisobri/claws/custom/macie/buckets"
 	_ "github.com/sayuthisobri/claws/custom/macie/classificationjobs"

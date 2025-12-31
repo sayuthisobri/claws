@@ -62,8 +62,6 @@ type ActionMenu struct {
 	resType        string
 	actions        []action.Action
 	cursor         int
-	width          int
-	height         int
 	result         *action.ActionResult
 	confirming     bool
 	confirmIdx     int
@@ -107,7 +105,7 @@ func (m *ActionMenu) Init() tea.Cmd {
 // Update implements tea.Model
 func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case navmsg.ProfileChangedMsg, navmsg.RegionChangedMsg:
+	case navmsg.ProfilesChangedMsg, navmsg.RegionChangedMsg:
 		// Let app.go handle these navigation messages
 		return m, func() tea.Msg { return msg }
 
@@ -390,9 +388,7 @@ func (m *ActionMenu) getActionAtPosition(y int) int {
 }
 
 // SetSize implements View
-func (m *ActionMenu) SetSize(width, height int) tea.Cmd {
-	m.width = width
-	m.height = height
+func (m *ActionMenu) SetSize(_, _ int) tea.Cmd {
 	return nil
 }
 

@@ -16,7 +16,10 @@ import (
 	"github.com/sayuthisobri/claws/internal/render"
 )
 
-const multiRegionFetchTimeout = 30 * time.Second
+const (
+	multiRegionFetchTimeout = 30 * time.Second
+	maxConcurrentFetches    = 50 // TODO: make configurable via config file
+)
 
 type listResourcesResult struct {
 	resources []dao.Resource
@@ -45,61 +48,46 @@ func (r *ResourceBrowser) listResources(d dao.DAO) listResourcesResult {
 	return r.listResourcesWithContext(r.ctx, d)
 }
 
-type multiRegionFetchResult struct {
-	resources  []dao.Resource
-	errors     []string
-	pageTokens map[string]string
+type profileRegionKey struct {
+	Profile string
+	Region  string
 }
 
-func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTokens map[string]string) multiRegionFetchResult {
-	type regionResult struct {
-		region    string
-		resources []dao.Resource
-		nextToken string
-		err       error
-	}
+type parallelFetchItem[K comparable] struct {
+	key       K
+	resources []dao.Resource
+	nextToken string
+	err       error
+}
 
-	ctx, cancel := context.WithTimeout(r.ctx, multiRegionFetchTimeout)
+type parallelFetchResult[K comparable] struct {
+	resources  []dao.Resource
+	errors     []string
+	pageTokens map[K]string
+}
+
+func fetchParallel[K comparable](
+	ctx context.Context,
+	keys []K,
+	fetch func(context.Context, K) ([]dao.Resource, string, error),
+	formatError func(K, error) string,
+) parallelFetchResult[K] {
+	ctx, cancel := context.WithTimeout(ctx, multiRegionFetchTimeout)
 	defer cancel()
 
-	results := make(chan regionResult, len(regions))
+	results := make(chan parallelFetchItem[K], len(keys))
+	sem := make(chan struct{}, maxConcurrentFetches)
 	var wg sync.WaitGroup
 
-	for _, region := range regions {
+	for _, key := range keys {
 		wg.Add(1)
-		go func(region string) {
+		go func(k K) {
 			defer wg.Done()
-
-			regionCtx := aws.WithRegionOverride(ctx, region)
-			d, err := r.registry.GetDAO(regionCtx, r.service, r.resourceType)
-			if err != nil {
-				results <- regionResult{region: region, err: err}
-				return
-			}
-
-			var listResult listResourcesResult
-			if pagDAO, ok := d.(dao.PaginatedDAO); ok {
-				token := ""
-				if existingTokens != nil {
-					token = existingTokens[region]
-				}
-				listCtx := regionCtx
-				if r.fieldFilter != "" && r.fieldFilterValue != "" {
-					listCtx = dao.WithFilter(regionCtx, r.fieldFilter, r.fieldFilterValue)
-				}
-				resources, nextToken, err := pagDAO.ListPage(listCtx, r.pageSize, token)
-				listResult = listResourcesResult{resources: resources, nextToken: nextToken, err: err}
-			} else {
-				listResult = r.listResourcesWithContext(regionCtx, d)
-			}
-
-			if listResult.err != nil {
-				results <- regionResult{region: region, err: listResult.err}
-				return
-			}
-
-			results <- regionResult{region: region, resources: listResult.resources, nextToken: listResult.nextToken}
-		}(region)
+			sem <- struct{}{}        // Acquire semaphore
+			defer func() { <-sem }() // Release semaphore
+			resources, nextToken, err := fetch(ctx, k)
+			results <- parallelFetchItem[K]{key: k, resources: resources, nextToken: nextToken, err: err}
+		}(key)
 	}
 
 	go func() {
@@ -107,45 +95,160 @@ func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTo
 		close(results)
 	}()
 
-	resultsByRegion := make(map[string]regionResult)
+	resultsByKey := make(map[K]parallelFetchItem[K])
 	for result := range results {
-		resultsByRegion[result.region] = result
+		resultsByKey[result.key] = result
 	}
 
 	var allResources []dao.Resource
 	var errors []string
-	pageTokens := make(map[string]string)
-	for _, region := range regions {
-		result, ok := resultsByRegion[region]
+	pageTokens := make(map[K]string)
+	for _, key := range keys {
+		result, ok := resultsByKey[key]
 		if !ok {
 			continue
 		}
 		if result.err != nil {
-			errors = append(errors, fmt.Sprintf("%s: %v", result.region, result.err))
-			log.Warn("failed to fetch from region", "region", result.region, "error", result.err)
+			errors = append(errors, formatError(key, result.err))
 		} else {
 			allResources = append(allResources, result.resources...)
 			if result.nextToken != "" {
-				pageTokens[result.region] = result.nextToken
+				pageTokens[key] = result.nextToken
 			}
 		}
 	}
 
-	return multiRegionFetchResult{resources: allResources, errors: errors, pageTokens: pageTokens}
+	return parallelFetchResult[K]{resources: allResources, errors: errors, pageTokens: pageTokens}
+}
+
+func (r *ResourceBrowser) fetchMultiProfileResources(profiles []config.ProfileSelection, regions []string, existingTokens map[profileRegionKey]string) parallelFetchResult[profileRegionKey] {
+	profileMap := make(map[string]config.ProfileSelection, len(profiles))
+	for _, sel := range profiles {
+		profileMap[sel.ID()] = sel
+	}
+
+	var keys []profileRegionKey
+	for _, sel := range profiles {
+		for _, region := range regions {
+			keys = append(keys, profileRegionKey{Profile: sel.ID(), Region: region})
+		}
+	}
+
+	fetch := func(ctx context.Context, key profileRegionKey) ([]dao.Resource, string, error) {
+		sel := profileMap[key.Profile]
+		fetchCtx := aws.WithSelectionOverride(ctx, sel)
+		fetchCtx = aws.WithRegionOverride(fetchCtx, key.Region)
+
+		accountID := config.Global().GetAccountIDForProfile(key.Profile)
+		if accountID == "" {
+			if id := aws.FetchAccountIDForContext(fetchCtx); id != "" {
+				config.Global().SetAccountIDForProfile(key.Profile, id)
+				accountID = id
+			}
+		}
+
+		d, err := r.registry.GetDAO(fetchCtx, r.service, r.resourceType)
+		if err != nil {
+			return nil, "", err
+		}
+
+		listResult := r.fetchWithDAO(fetchCtx, d, existingTokens[key])
+		if listResult.err != nil {
+			return nil, "", listResult.err
+		}
+
+		wrapped := make([]dao.Resource, len(listResult.resources))
+		for i, res := range listResult.resources {
+			wrapped[i] = dao.WrapWithProfile(dao.UnwrapResource(res), key.Profile, accountID, key.Region)
+		}
+		return wrapped, listResult.nextToken, nil
+	}
+
+	formatError := func(key profileRegionKey, err error) string {
+		log.Debug("failed to fetch", "profile", key.Profile, "region", key.Region, "error", err)
+		return fmt.Sprintf("%s/%s: %v", key.Profile, key.Region, err)
+	}
+
+	return fetchParallel(r.ctx, keys, fetch, formatError)
+}
+
+func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTokens map[string]string) parallelFetchResult[string] {
+	fetch := func(ctx context.Context, region string) ([]dao.Resource, string, error) {
+		regionCtx := aws.WithRegionOverride(ctx, region)
+		d, err := r.registry.GetDAO(regionCtx, r.service, r.resourceType)
+		if err != nil {
+			return nil, "", err
+		}
+
+		token := ""
+		if existingTokens != nil {
+			token = existingTokens[region]
+		}
+		listResult := r.fetchWithDAO(regionCtx, d, token)
+		if listResult.err != nil {
+			return nil, "", listResult.err
+		}
+
+		wrapped := make([]dao.Resource, len(listResult.resources))
+		for i, res := range listResult.resources {
+			wrapped[i] = dao.WrapWithRegion(dao.UnwrapResource(res), region)
+		}
+		return wrapped, listResult.nextToken, nil
+	}
+
+	formatError := func(region string, err error) string {
+		log.Debug("failed to fetch from region", "region", region, "error", err)
+		return fmt.Sprintf("%s: %v", region, err)
+	}
+
+	return fetchParallel(r.ctx, regions, fetch, formatError)
+}
+
+func (r *ResourceBrowser) fetchWithDAO(ctx context.Context, d dao.DAO, token string) listResourcesResult {
+	if pagDAO, ok := d.(dao.PaginatedDAO); ok {
+		listCtx := ctx
+		if r.fieldFilter != "" && r.fieldFilterValue != "" {
+			listCtx = dao.WithFilter(ctx, r.fieldFilter, r.fieldFilterValue)
+		}
+		resources, nextToken, err := pagDAO.ListPage(listCtx, r.pageSize, token)
+		return listResourcesResult{resources: resources, nextToken: nextToken, err: err}
+	}
+	return r.listResourcesWithContext(ctx, d)
 }
 
 func (r *ResourceBrowser) loadResources() tea.Msg {
 	start := time.Now()
+	profiles := config.Global().Selections()
 	regions := config.Global().Regions()
+	isMultiProfile := len(profiles) > 1
 	isMultiRegion := len(regions) > 1
 
 	log.Debug("loading resources", "service", r.service, "resourceType", r.resourceType,
-		"regions", regions, "multiRegion", isMultiRegion)
+		"profiles", len(profiles), "regions", regions, "multiProfile", isMultiProfile, "multiRegion", isMultiRegion)
 
 	renderer, err := r.registry.GetRenderer(r.service, r.resourceType)
 	if err != nil {
 		log.Error("failed to get renderer", "service", r.service, "resourceType", r.resourceType, "error", err)
 		return resourcesErrorMsg{err: err}
+	}
+
+	if isMultiProfile {
+		fetchResult := r.fetchMultiProfileResources(profiles, regions, nil)
+		if len(fetchResult.resources) == 0 && len(fetchResult.errors) > 0 {
+			return resourcesErrorMsg{err: fmt.Errorf("all profile/region pairs failed: %s", strings.Join(fetchResult.errors, "; "))}
+		}
+
+		log.Debug("multi-profile resources loaded", "count", len(fetchResult.resources),
+			"profiles", len(profiles), "regions", len(regions), "errors", len(fetchResult.errors), "duration", time.Since(start))
+
+		return resourcesLoadedMsg{
+			dao:                 nil,
+			renderer:            renderer,
+			resources:           fetchResult.resources,
+			nextMultiPageTokens: fetchResult.pageTokens,
+			hasMorePages:        len(fetchResult.pageTokens) > 0,
+			partialErrors:       fetchResult.errors,
+		}
 	}
 
 	if !isMultiRegion {
@@ -190,8 +293,26 @@ func (r *ResourceBrowser) loadResources() tea.Msg {
 }
 
 func (r *ResourceBrowser) reloadResources() tea.Msg {
+	profiles := config.Global().Selections()
 	regions := config.Global().Regions()
+	isMultiProfile := len(profiles) > 1
 	isMultiRegion := len(regions) > 1
+
+	if isMultiProfile {
+		fetchResult := r.fetchMultiProfileResources(profiles, regions, nil)
+		if len(fetchResult.resources) == 0 && len(fetchResult.errors) > 0 {
+			return resourcesErrorMsg{err: fmt.Errorf("all profile/region pairs failed: %s", strings.Join(fetchResult.errors, "; "))}
+		}
+
+		return resourcesLoadedMsg{
+			dao:                 nil,
+			renderer:            r.renderer,
+			resources:           fetchResult.resources,
+			nextMultiPageTokens: fetchResult.pageTokens,
+			hasMorePages:        len(fetchResult.pageTokens) > 0,
+			partialErrors:       fetchResult.errors,
+		}
+	}
 
 	if !isMultiRegion {
 		d := r.dao
@@ -233,20 +354,22 @@ func (r *ResourceBrowser) reloadResources() tea.Msg {
 }
 
 type resourcesLoadedMsg struct {
-	dao            dao.DAO
-	renderer       render.Renderer
-	resources      []dao.Resource
-	nextToken      string
-	nextPageTokens map[string]string
-	hasMorePages   bool
-	partialErrors  []string
+	dao                 dao.DAO
+	renderer            render.Renderer
+	resources           []dao.Resource
+	nextToken           string
+	nextPageTokens      map[string]string
+	nextMultiPageTokens map[profileRegionKey]string
+	hasMorePages        bool
+	partialErrors       []string
 }
 
 type nextPageLoadedMsg struct {
-	resources      []dao.Resource
-	nextToken      string
-	nextPageTokens map[string]string
-	hasMorePages   bool
+	resources           []dao.Resource
+	nextToken           string
+	nextPageTokens      map[string]string
+	nextMultiPageTokens map[profileRegionKey]string
+	hasMorePages        bool
 }
 
 type resourcesErrorMsg struct {
@@ -257,7 +380,7 @@ func (r *ResourceBrowser) shouldLoadNextPage() bool {
 	if !r.hasMorePages || r.isLoadingMore || r.loading {
 		return false
 	}
-	if r.nextPageToken == "" && len(r.nextPageTokens) == 0 {
+	if r.nextPageToken == "" && len(r.nextPageTokens) == 0 && len(r.nextMultiPageTokens) == 0 {
 		return false
 	}
 	if r.filterText != "" && len(r.filtered) < 10 {
@@ -271,6 +394,10 @@ func (r *ResourceBrowser) shouldLoadNextPage() bool {
 }
 
 func (r *ResourceBrowser) loadNextPage() tea.Msg {
+	if len(r.nextMultiPageTokens) > 0 {
+		return r.loadNextPageMultiProfile()
+	}
+
 	if len(r.nextPageTokens) > 0 {
 		return r.loadNextPageMultiRegion()
 	}
@@ -327,5 +454,28 @@ func (r *ResourceBrowser) loadNextPageMultiRegion() tea.Msg {
 		resources:      fetchResult.resources,
 		nextPageTokens: fetchResult.pageTokens,
 		hasMorePages:   len(fetchResult.pageTokens) > 0,
+	}
+}
+
+func (r *ResourceBrowser) loadNextPageMultiProfile() tea.Msg {
+	profiles := config.Global().Selections()
+	regions := config.Global().Regions()
+
+	tokensToFetch := make(map[profileRegionKey]string)
+	for key, token := range r.nextMultiPageTokens {
+		tokensToFetch[key] = token
+	}
+
+	start := time.Now()
+	log.Debug("loading next page multi-profile", "service", r.service, "resourceType", r.resourceType, "pairs", len(tokensToFetch))
+
+	fetchResult := r.fetchMultiProfileResources(profiles, regions, tokensToFetch)
+
+	log.Debug("next page multi-profile loaded", "count", len(fetchResult.resources), "hasMore", len(fetchResult.pageTokens) > 0, "duration", time.Since(start))
+
+	return nextPageLoadedMsg{
+		resources:           fetchResult.resources,
+		nextMultiPageTokens: fetchResult.pageTokens,
+		hasMorePages:        len(fetchResult.pageTokens) > 0,
 	}
 }
