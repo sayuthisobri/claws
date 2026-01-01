@@ -156,6 +156,7 @@ import (
 	_ "github.com/clawscli/claws/custom/elasticache/clusters"
 
 	// ELBv2 (ALB/NLB/GLB)
+	_ "github.com/clawscli/claws/custom/elbv2/listeners"
 	_ "github.com/clawscli/claws/custom/elbv2/loadbalancers"
 	_ "github.com/clawscli/claws/custom/elbv2/targetgroups"
 	_ "github.com/clawscli/claws/custom/elbv2/targets"

@@ -296,6 +296,22 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Trigger a re-render to update header with account ID
 		return a, nil
 
+	case view.SsoLoginRequestMsg:
+		// Show SSO login confirmation modal
+		confirmView := view.NewSSOLoginConfirmationView(a.ctx, a.registry, msg.ErrorMsg)
+		modalWidth := a.width
+		if a.width >= 60 {
+			modalWidth = 60
+		}
+		modal := &view.Modal{
+			Content: confirmView,
+			Width:   modalWidth,
+		}
+		return a, tea.Batch(
+			func() tea.Msg { return view.ShowModalMsg{Modal: modal} },
+			modal.SetSize(a.width, a.height),
+		)
+
 	case navmsg.RegionChangedMsg:
 		log.Info("regions changed", "regions", msg.Regions)
 		// Pop views until we find a refreshable one (ResourceBrowser or ServiceBrowser)

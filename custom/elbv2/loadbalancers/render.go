@@ -1,6 +1,7 @@
 package loadbalancers
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -144,6 +145,12 @@ func (r *LoadBalancerRenderer) RenderDetail(resource dao.Resource) string {
 		d.Field("Availability Zones", strings.Join(zones, ", "))
 	}
 
+	// IP Addresses
+	ips := rr.IPAddresses()
+	if len(ips) > 0 {
+		d.Field("IP Addresses", strings.Join(ips, ", "))
+	}
+
 	// Security Groups
 	sgs := rr.SecurityGroups()
 	if len(sgs) > 0 {
@@ -153,7 +160,107 @@ func (r *LoadBalancerRenderer) RenderDetail(resource dao.Resource) string {
 		}
 	}
 
+	// Resource Map
+	r.addResourceMap(d, rr)
+
 	return d.String()
+}
+
+// addResourceMap adds the resource map section showing listener -> target group -> target relationships
+func (r *LoadBalancerRenderer) addResourceMap(d *render.DetailBuilder, rr *LoadBalancerResource) {
+	// Get resource map from DAO
+	resourceMap, err := rr.GetResourceMap(context.Background())
+	if err != nil {
+		d.Section("Resource Map")
+		d.Field("Error", "Failed to get resource map: "+err.Error())
+		return
+	}
+
+	if len(resourceMap.Listeners) == 0 {
+		d.Section("Resource Map")
+		d.Field("No Resources", "No listeners found for this load balancer")
+		return
+	}
+
+	d.Section("Resource Map")
+
+	for _, listener := range resourceMap.Listeners {
+		listenerStr := fmt.Sprintf("%s:%d", listener.Protocol, listener.Port)
+
+		for _, action := range listener.Actions {
+			switch action.Type {
+			case "forward":
+				if len(action.TargetGroups) > 0 {
+					for _, tg := range action.TargetGroups {
+						targetsStr := ""
+						if len(tg.Targets) > 0 {
+							var targetList []string
+							for _, target := range tg.Targets {
+								targetStr := fmt.Sprintf("%s", target.ID)
+								if target.Port > 0 {
+									targetStr = fmt.Sprintf("%s:%d", targetStr, target.Port)
+								}
+								if target.HealthState != "" {
+									targetStr = fmt.Sprintf("%s (%s)", targetStr, target.HealthState)
+								}
+								targetList = append(targetList, targetStr)
+							}
+							targetsStr = strings.Join(targetList, ", ")
+						} else {
+							targetsStr = "No targets"
+						}
+
+						d.Field(fmt.Sprintf("Listener %s", listenerStr), fmt.Sprintf("Target Group: %s -> Targets: %s", tg.Name, targetsStr))
+					}
+				} else {
+					d.Field(fmt.Sprintf("Listener %s", listenerStr), "Action: forward (no target groups)")
+				}
+			case "fixed-response":
+				if action.FixedResponse != nil {
+					fixedResp := action.FixedResponse
+					details := fmt.Sprintf("Status: %s", fixedResp.StatusCode)
+					if fixedResp.ContentType != "" {
+						details += fmt.Sprintf(", Content-Type: %s", fixedResp.ContentType)
+					}
+					if fixedResp.MessageBody != "" {
+						details += fmt.Sprintf(", Body: %s", fixedResp.MessageBody)
+					}
+					d.Field(fmt.Sprintf("Listener %s", listenerStr), fmt.Sprintf("Fixed Response: %s", details))
+				} else {
+					d.Field(fmt.Sprintf("Listener %s", listenerStr), "Action: fixed-response (no config)")
+				}
+			case "redirect":
+				if action.Redirect != nil {
+					redirect := action.Redirect
+					details := fmt.Sprintf("Status: %s", redirect.StatusCode)
+					if redirect.Host != "" {
+						details += fmt.Sprintf(", Host: %s", redirect.Host)
+					}
+					if redirect.Path != "" {
+						details += fmt.Sprintf(", Path: %s", redirect.Path)
+					}
+					if redirect.Port != "" {
+						details += fmt.Sprintf(", Port: %s", redirect.Port)
+					}
+					if redirect.Protocol != "" {
+						details += fmt.Sprintf(", Protocol: %s", redirect.Protocol)
+					}
+					if redirect.Query != "" {
+						details += fmt.Sprintf(", Query: %s", redirect.Query)
+					}
+					d.Field(fmt.Sprintf("Listener %s", listenerStr), fmt.Sprintf("Redirect: %s", details))
+				} else {
+					d.Field(fmt.Sprintf("Listener %s", listenerStr), "Action: redirect (no config)")
+				}
+			default:
+				if action.Description != "" {
+					d.Field(fmt.Sprintf("Listener %s", listenerStr), action.Description)
+				} else {
+					d.Field(fmt.Sprintf("Listener %s", listenerStr), fmt.Sprintf("Action: %s", action.Type))
+				}
+			}
+		}
+	}
 }
 
 // RenderSummary returns summary fields for the header panel
@@ -184,6 +291,14 @@ func (r *LoadBalancerRenderer) Navigations(resource dao.Resource) []render.Navig
 			Label:       "Target Groups",
 			Service:     "elbv2",
 			Resource:    "target-groups",
+			FilterField: "LoadBalancerArn",
+			FilterValue: rr.LoadBalancerArn(),
+		},
+		{
+			Key:         "l",
+			Label:       "Listeners",
+			Service:     "elbv2",
+			Resource:    "listeners",
 			FilterField: "LoadBalancerArn",
 			FilterValue: rr.LoadBalancerArn(),
 		},

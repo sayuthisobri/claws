@@ -207,6 +207,11 @@ type autoReloadTickMsg struct {
 	time time.Time
 }
 
+// SsoLoginRequestMsg is sent when SSO login is requested
+type SsoLoginRequestMsg struct {
+	ErrorMsg string
+}
+
 func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case resourcesLoadedMsg:
@@ -228,6 +233,24 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case DiffMsg:
 		return r.handleDiffMsg(msg)
 	case tea.KeyPressMsg:
+		// Handle SSO error key presses
+		if r.err != nil {
+			errStr := r.err.Error()
+			if strings.Contains(errStr, "SSO token failed") || strings.Contains(errStr, "unable to refresh SSO token") {
+				switch msg.String() {
+				case "l":
+					// User wants to perform SSO login
+					return r, func() tea.Msg {
+						return SsoLoginRequestMsg{ErrorMsg: errStr}
+					}
+				case "n":
+					// User wants to continue without login - clear the error
+					r.err = nil
+					return r, nil
+				}
+			}
+		}
+
 		if model, cmd := r.handleKeyPress(msg); model != nil || cmd != nil {
 			if model == nil {
 				model = r
@@ -276,6 +299,15 @@ func (r *ResourceBrowser) ViewString() string {
 
 	if r.err != nil {
 		header := r.headerPanel.Render(r.service, r.resourceType, nil)
+
+		// Check for SSO token errors
+		errStr := r.err.Error()
+		if strings.Contains(errStr, "SSO token failed") || strings.Contains(errStr, "unable to refresh SSO token") {
+			// Show SSO error with instruction to press 'l' for modal
+			return header + "\n" + ui.DangerStyle().Render(fmt.Sprintf("SSO Error: %v", r.err)) + "\n" +
+				ui.DimStyle().Render("Press 'l' to open SSO login dialog or 'n' to continue without login")
+		}
+
 		return header + "\n" + ui.DangerStyle().Render(fmt.Sprintf("Error: %v", r.err))
 	}
 

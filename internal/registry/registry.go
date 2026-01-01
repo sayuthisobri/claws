@@ -458,6 +458,7 @@ var subResourceSet = map[string]struct{}{
 	"route53/record-sets":              {},
 	"apigateway/stages":                {},
 	"apigateway/stages-v2":             {},
+	"elbv2/listeners":                  {},
 	"elbv2/targets":                    {},
 	"s3vectors/indexes":                {},
 	"guardduty/findings":               {},
