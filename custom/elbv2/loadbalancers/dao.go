@@ -275,16 +275,16 @@ type ResourceMap struct {
 
 // ListenerMap represents a listener and its associated target groups and targets
 type ListenerMap struct {
-	Protocol string            `json:"protocol"`
-	Port     int32             `json:"port"`
-	Actions  []ActionMap       `json:"actions"`
+	Protocol string      `json:"protocol"`
+	Port     int32       `json:"port"`
+	Actions  []ActionMap `json:"actions"`
 }
 
 // ActionMap represents an action and its associated target groups
 type ActionMap struct {
-	Type          string            `json:"type"`
-	TargetGroups  []TargetGroupMap  `json:"targetGroups"`
-	Description   string            `json:"description,omitempty"`
+	Type         string           `json:"type"`
+	TargetGroups []TargetGroupMap `json:"targetGroups"`
+	Description  string           `json:"description,omitempty"`
 	// Fixed Response Action Details
 	FixedResponse *FixedResponseDetails `json:"fixedResponse,omitempty"`
 	// Redirect Action Details
@@ -317,9 +317,9 @@ type TargetGroupMap struct {
 
 // TargetMap represents a target with its health status
 type TargetMap struct {
-	ID           string `json:"id"`
-	Port         int32  `json:"port"`
-	HealthState  string `json:"healthState"`
+	ID               string `json:"id"`
+	Port             int32  `json:"port"`
+	HealthState      string `json:"healthState"`
 	AvailabilityZone string `json:"availabilityZone,omitempty"`
 }
 
@@ -387,19 +387,19 @@ func (r *LoadBalancerResource) GetResourceMap(ctx context.Context) (*ResourceMap
 								for _, th := range thOutput.TargetHealthDescriptions {
 									if th.Target != nil && th.Target.Id != nil {
 										target := TargetMap{
-											ID: *th.Target.Id,
-											Port: 0,
+											ID:          *th.Target.Id,
+											Port:        0,
 											HealthState: string(th.TargetHealth.State),
 										}
-										
+
 										if th.Target.Port != nil {
 											target.Port = *th.Target.Port
 										}
-										
+
 										if th.Target.AvailabilityZone != nil {
 											target.AvailabilityZone = *th.Target.AvailabilityZone
 										}
-										
+
 										targets = append(targets, target)
 									}
 								}

@@ -146,6 +146,7 @@ func TestFuzzyMatch(t *testing.T) {
 		pattern string
 		want    bool
 	}{
+		// Regular fuzzy matching (backward compatibility)
 		{"AgentCoreStackdev", "agecrstdev", true},
 		{"AgentCoreStackdev", "agent", true},
 		{"AgentCoreStackdev", "acd", true},
@@ -157,6 +158,38 @@ func TestFuzzyMatch(t *testing.T) {
 		{"production", "pdn", true},
 		{"", "a", false},
 		{"abc", "", true}, // empty pattern matches everything
+
+		// Prefix matching (^pattern)
+		{"127.0.0.1", "^127.0", true},
+		{"127.0.0.1", "^127.0.0.1", true},
+		{"192.168.1.1", "^127.0", false},
+		{"Hello World", "^hello", true}, // case insensitive
+		{"test", "^", true},             // empty after caret
+
+		// Contains matching (*pattern)
+		{"hello world", "*world", true},
+		{"hello world", "*hello", true},
+		{"hello world", "*lo wo", true},
+		{"hello world", "*xyz", false},
+		{"Hello World", "*world", true}, // case insensitive
+		{"test", "*", true},             // empty after asterisk
+
+		// Suffix matching ($pattern)
+		{"127.0.0.1", "$0.1", true},
+		{"127.0.0.1", "$127.0.0.1", true},
+		{"192.168.1.1", "$0.1", false},
+		{"Hello World", "$world", true}, // case insensitive
+		{"test", "$", true},             // empty after dollar
+
+		// Edge cases
+		{"a", "^a", true},
+		{"a", "*a", true},
+		{"a", "$a", true},
+		{"a", "a", true},
+		{"", "^", true},
+		{"", "*", true},
+		{"", "$", true},
+		{"", "", true},
 	}
 
 	for _, tt := range tests {

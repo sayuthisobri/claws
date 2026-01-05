@@ -78,7 +78,7 @@ func NewLoadBalancerRenderer() render.Renderer {
 				},
 				{
 					Name:  "AZS",
-					Width: 20,
+					Width: 12,
 					Getter: func(r dao.Resource) string {
 						if rr, ok := r.(*LoadBalancerResource); ok {
 							zones := rr.AvailabilityZones()
@@ -99,6 +99,18 @@ func NewLoadBalancerRenderer() render.Renderer {
 							if !t.IsZero() {
 								return t.Format("2006-01-02 15:04")
 							}
+						}
+						return ""
+					},
+					Priority: 7,
+				},
+				{
+					Name:  "IPs",
+					Width: 40,
+					Getter: func(r dao.Resource) string {
+						if rr, ok := r.(*LoadBalancerResource); ok {
+							ips := rr.IPAddresses()
+							return strings.Join(ips, ", ")
 						}
 						return ""
 					},
