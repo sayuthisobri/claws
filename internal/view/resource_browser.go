@@ -3,6 +3,7 @@ package view
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -24,10 +25,7 @@ import (
 
 // ResourceBrowser displays resources of a specific type
 
-const (
-	logTokenMaxLen     = 20
-	metricsLoadTimeout = 30 * time.Second
-)
+const logTokenMaxLen = 20
 
 // resourceBrowserStyles holds cached lipgloss styles for performance
 type resourceBrowserStyles struct {
@@ -40,14 +38,13 @@ type resourceBrowserStyles struct {
 }
 
 func newResourceBrowserStyles() resourceBrowserStyles {
-	t := ui.Current()
 	return resourceBrowserStyles{
-		count:        lipgloss.NewStyle().Foreground(t.TextDim),
-		filterBg:     lipgloss.NewStyle().Background(t.Background).Foreground(t.Text).Padding(0, 1),
-		filterActive: lipgloss.NewStyle().Foreground(t.Accent).Italic(true),
-		tabSingle:    lipgloss.NewStyle().Foreground(t.Primary),
-		tabActive:    lipgloss.NewStyle().Background(t.Selection).Foreground(t.SelectionText).Padding(0, 1),
-		tabInactive:  lipgloss.NewStyle().Foreground(t.TextDim).Padding(0, 1),
+		count:        ui.DimStyle(),
+		filterBg:     ui.InputFieldStyle(),
+		filterActive: ui.AccentStyle().Italic(true),
+		tabSingle:    ui.PrimaryStyle(),
+		tabActive:    ui.SelectedStyle().Padding(0, 1),
+		tabInactive:  ui.DimStyle().Padding(0, 1),
 	}
 }
 
@@ -127,12 +124,7 @@ type ResourceBrowser struct {
 
 // NewResourceBrowser creates a new ResourceBrowser
 func NewResourceBrowser(ctx context.Context, reg *registry.Registry, service string) *ResourceBrowser {
-	resources := reg.ListResources(service)
-	resourceType := ""
-	if len(resources) > 0 {
-		resourceType = resources[0]
-	}
-
+	resourceType := reg.DefaultResource(service)
 	return newResourceBrowser(ctx, reg, service, resourceType)
 }
 
@@ -442,10 +434,7 @@ func (r *ResourceBrowser) GetTagKeys() []string {
 		}
 	}
 
-	keys := make([]string, 0, len(keySet))
-	for key := range keySet {
-		keys = append(keys, key)
-	}
+	keys := slices.Collect(maps.Keys(keySet))
 	slices.Sort(keys)
 	return keys
 }
@@ -467,10 +456,7 @@ func (r *ResourceBrowser) GetTagValues(key string) []string {
 		}
 	}
 
-	values := make([]string, 0, len(valueSet))
-	for value := range valueSet {
-		values = append(values, value)
-	}
+	values := slices.Collect(maps.Keys(valueSet))
 	slices.Sort(values)
 	return values
 }

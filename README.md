@@ -131,6 +131,14 @@ CLAWS_READ_ONLY=1 claws
 
 # Enable debug logging to file
 claws -l debug.log
+
+# Start directly on a service
+claws -s ec2              # EC2 instances
+claws -s rds/snapshots    # RDS snapshots
+claws -s cfn              # CloudFormation (alias)
+
+# Open detail view for specific resource
+claws -s ec2 -i i-1234567890abcdef0
 ```
 
 ## Key Bindings
@@ -157,6 +165,8 @@ claws -l debug.log
 | `c` | Clear filter and mark |
 | `N` | Load next page (pagination) |
 | `M` | Toggle inline metrics (EC2, RDS, Lambda) |
+| `y` | Copy resource ID to clipboard |
+| `Y` | Copy resource ARN to clipboard |
 | `Ctrl+r` | Refresh (including metrics) |
 | `R` | Select AWS region(s) (multi-select supported) |
 | `P` | Select AWS profile(s) (multi-select supported) |
@@ -385,7 +395,37 @@ claws uses your standard AWS configuration:
 - `~/.aws/config` - AWS configuration (region, profile)
 - Environment variables: `AWS_PROFILE`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, etc.
 
-Configuration is stored in `~/.config/claws/config.yaml` for profile preferences.
+### Configuration File
+
+Optional settings can be stored in `~/.config/claws/config.yaml`:
+
+```yaml
+timeouts:
+  aws_init: 10s           # AWS initialization timeout (default: 5s)
+  multi_region_fetch: 60s # Multi-region parallel fetch timeout (default: 30s)
+  tag_search: 45s         # Tag search timeout (default: 30s)
+  metrics_load: 30s       # CloudWatch metrics load timeout (default: 30s)
+  log_fetch: 15s          # CloudWatch Logs fetch timeout (default: 10s)
+
+concurrency:
+  max_fetches: 100        # Max concurrent API fetches (default: 50)
+
+cloudwatch:
+  window: 15m             # Metrics data window period (default: 15m)
+
+persistence:
+  enabled: true           # Save region/profile on change (default: false)
+
+startup:                  # Applied on launch if present
+  profile: production
+  regions:
+    - us-east-1
+    - us-west-2
+```
+
+The config file is **not created automatically**. Create it manually if needed.
+
+CLI flags (`-p`, `-r`, `--persist`, `--no-persist`) override config file settings.
 
 For required IAM permissions, see [docs/iam-permissions.md](docs/iam-permissions.md).
 

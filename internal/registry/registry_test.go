@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/clawscli/claws/internal/dao"
@@ -188,6 +189,35 @@ func TestRegistry_ListResources_ExcludesSubResources(t *testing.T) {
 	}
 }
 
+func TestRegistry_DefaultResource(t *testing.T) {
+	reg := New()
+
+	reg.RegisterCustom("ec2", "capacity-reservations", Entry{})
+	reg.RegisterCustom("ec2", "instances", Entry{})
+	reg.RegisterCustom("ec2", "volumes", Entry{})
+	reg.RegisterCustom("rds", "instances", Entry{})
+	reg.RegisterCustom("rds", "snapshots", Entry{})
+	reg.RegisterCustom("s3", "buckets", Entry{})
+
+	tests := []struct {
+		service string
+		want    string
+	}{
+		{"ec2", "instances"},
+		{"rds", "instances"},
+		{"s3", "buckets"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.service, func(t *testing.T) {
+			got := reg.DefaultResource(tt.service)
+			if got != tt.want {
+				t.Errorf("DefaultResource(%q) = %q, want %q", tt.service, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestRegistry_ResolveAlias(t *testing.T) {
 	reg := New()
 
@@ -257,6 +287,74 @@ func TestRegistry_GetAliasesForService_WithResourceAlias(t *testing.T) {
 	if !found {
 		t.Errorf("GetAliasesForService(ec2) should include 'sg', got %v", aliases)
 	}
+}
+
+func TestRegistry_GetAliases(t *testing.T) {
+	reg := New()
+	aliases := reg.GetAliases()
+
+	if len(aliases) == 0 {
+		t.Fatal("GetAliases() should return aliases")
+	}
+
+	aliasMap := make(map[string]bool)
+	for _, a := range aliases {
+		aliasMap[a] = true
+	}
+
+	for _, expected := range []string{"cfn", "cf", "sg", "cost-explorer"} {
+		if !aliasMap[expected] {
+			t.Errorf("GetAliases() should include %q", expected)
+		}
+	}
+}
+
+func TestRegistry_GetAliases_ExcludesSelfReferential(t *testing.T) {
+	reg := New()
+	aliases := reg.GetAliases()
+
+	for _, alias := range aliases {
+		resolved, _, found := reg.ResolveAlias(alias)
+		if found && alias == resolved {
+			t.Errorf("GetAliases() should exclude self-referential alias %q", alias)
+		}
+	}
+}
+
+func TestRegistry_GetAliases_ConcurrentAccess(t *testing.T) {
+	reg := New()
+	var wg sync.WaitGroup
+	const goroutines = 100
+
+	wg.Add(goroutines)
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			aliases := reg.GetAliases()
+			if len(aliases) == 0 {
+				t.Error("GetAliases() should return aliases")
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+func TestRegistry_GetAliasesForService_ConcurrentAccess(t *testing.T) {
+	reg := New()
+	var wg sync.WaitGroup
+	const goroutines = 100
+
+	wg.Add(goroutines)
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			aliases := reg.GetAliasesForService("cloudformation")
+			if len(aliases) != 2 {
+				t.Errorf("GetAliasesForService() returned %d aliases, want 2", len(aliases))
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func TestRegistry_GetDAO_NotRegistered(t *testing.T) {

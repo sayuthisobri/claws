@@ -4,6 +4,7 @@ import (
 	"maps"
 	"os"
 	"regexp"
+	"slices"
 	"sync"
 )
 
@@ -174,7 +175,6 @@ func (s ProfileSelection) ID() string {
 	}
 }
 
-// Config holds global application configuration
 type Config struct {
 	mu         sync.RWMutex
 	regions    []string
@@ -188,18 +188,6 @@ var (
 	global   *Config
 	initOnce sync.Once
 )
-
-func withRLock[T any](mu *sync.RWMutex, fn func() T) T {
-	mu.RLock()
-	defer mu.RUnlock()
-	return fn()
-}
-
-func doWithLock(mu *sync.RWMutex, fn func()) {
-	mu.Lock()
-	defer mu.Unlock()
-	fn()
-}
 
 // Global returns the global config instance
 func Global() *Config {
@@ -226,6 +214,15 @@ func (c *Config) Regions() []string {
 
 func (c *Config) SetRegion(region string) {
 	doWithLock(&c.mu, func() { c.regions = []string{region} })
+}
+
+// AddRegion adds a region to the existing regions if not already present.
+func (c *Config) AddRegion(region string) {
+	doWithLock(&c.mu, func() {
+		if !slices.Contains(c.regions, region) {
+			c.regions = append(c.regions, region)
+		}
+	})
 }
 
 func (c *Config) SetRegions(regions []string) {

@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/view"
 )
@@ -32,13 +33,29 @@ func (m *MockView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func TestEscInDetailView(t *testing.T) {
+type RefreshableMockView struct {
+	MockView
+	canRefresh bool
+}
+
+func (m *RefreshableMockView) CanRefresh() bool { return m.canRefresh }
+
+func (m *RefreshableMockView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return m, nil
+}
+
+func newTestApp(t *testing.T) *App {
+	t.Helper()
 	ctx := context.Background()
 	reg := registry.New()
-
-	app := New(ctx, reg)
+	app := New(ctx, reg, nil)
 	app.width = 100
 	app.height = 50
+	return app
+}
+
+func TestEscInDetailView(t *testing.T) {
+	app := newTestApp(t)
 
 	// Set up view stack: ServiceBrowser -> ResourceBrowser -> DetailView
 	serviceBrowser := &MockView{name: "ServiceBrowser"}
@@ -83,14 +100,8 @@ func TestEscInDetailView(t *testing.T) {
 }
 
 func TestEscInFilterMode(t *testing.T) {
-	ctx := context.Background()
-	reg := registry.New()
+	app := newTestApp(t)
 
-	app := New(ctx, reg)
-	app.width = 100
-	app.height = 50
-
-	// Set up view with active filter
 	resourceBrowser := &MockView{name: "ResourceBrowser", hasInput: true}
 	serviceBrowser := &MockView{name: "ServiceBrowser"}
 
@@ -129,12 +140,7 @@ func TestEscInFilterMode(t *testing.T) {
 }
 
 func TestNavigationFlow(t *testing.T) {
-	ctx := context.Background()
-	reg := registry.New()
-
-	app := New(ctx, reg)
-	app.width = 100
-	app.height = 50
+	app := newTestApp(t)
 
 	// Start with ServiceBrowser
 	serviceBrowser := &MockView{name: "ServiceBrowser"}
@@ -202,10 +208,7 @@ func TestNavigationFlow(t *testing.T) {
 }
 
 func TestAWSContextReadyMsg_Success(t *testing.T) {
-	ctx := context.Background()
-	reg := registry.New()
-
-	app := New(ctx, reg)
+	app := newTestApp(t)
 	app.awsInitializing = true
 
 	// Simulate successful AWS init
@@ -221,10 +224,7 @@ func TestAWSContextReadyMsg_Success(t *testing.T) {
 }
 
 func TestAWSContextReadyMsg_Timeout(t *testing.T) {
-	ctx := context.Background()
-	reg := registry.New()
-
-	app := New(ctx, reg)
+	app := newTestApp(t)
 	app.awsInitializing = true
 
 	// Simulate timeout error
@@ -240,10 +240,7 @@ func TestAWSContextReadyMsg_Timeout(t *testing.T) {
 }
 
 func TestAWSContextReadyMsg_IMDSError(t *testing.T) {
-	ctx := context.Background()
-	reg := registry.New()
-
-	app := New(ctx, reg)
+	app := newTestApp(t)
 	app.awsInitializing = true
 
 	msg := awsContextReadyMsg{err: fmt.Errorf("operation error ec2imds: GetRegion, exceeded maximum number of attempts")}
@@ -257,13 +254,136 @@ func TestAWSContextReadyMsg_IMDSError(t *testing.T) {
 	}
 }
 
-func TestModalShowAndHide(t *testing.T) {
-	ctx := context.Background()
-	reg := registry.New()
+func TestProfileRefreshDoneMsg_Success(t *testing.T) {
+	app := newTestApp(t)
+	app.profileRefreshID = 5
+	app.profileRefreshing = true
 
-	app := New(ctx, reg)
-	app.width = 100
-	app.height = 50
+	msg := profileRefreshDoneMsg{
+		refreshID:  5,
+		region:     "us-west-2",
+		accountIDs: map[string]string{"dev": "123456789012"},
+		err:        nil,
+	}
+	app.Update(msg)
+
+	if app.profileRefreshing {
+		t.Error("Expected profileRefreshing to be false after success")
+	}
+	if app.profileRefreshError != nil {
+		t.Error("Expected profileRefreshError to be nil after success")
+	}
+}
+
+func TestProfileRefreshDoneMsg_StaleIgnored(t *testing.T) {
+	app := newTestApp(t)
+	app.profileRefreshID = 10
+	app.profileRefreshing = true
+
+	msg := profileRefreshDoneMsg{
+		refreshID:  5,
+		region:     "us-west-2",
+		accountIDs: map[string]string{"dev": "123456789012"},
+		err:        nil,
+	}
+	app.Update(msg)
+
+	if !app.profileRefreshing {
+		t.Error("Expected profileRefreshing to remain true for stale refresh")
+	}
+}
+
+func TestProfileRefreshDoneMsg_Error(t *testing.T) {
+	app := newTestApp(t)
+	app.profileRefreshID = 1
+	app.profileRefreshing = true
+
+	msg := profileRefreshDoneMsg{
+		refreshID: 1,
+		err:       fmt.Errorf("failed to load config"),
+	}
+	app.Update(msg)
+
+	if app.profileRefreshing {
+		t.Error("Expected profileRefreshing to be false after error")
+	}
+	if app.profileRefreshError == nil {
+		t.Error("Expected profileRefreshError to be set after error")
+	}
+	if app.showWarnings {
+		t.Error("Expected showWarnings to remain false")
+	}
+}
+
+func TestProfileRefreshError_ClearedOnNewRefresh(t *testing.T) {
+	app := newTestApp(t)
+	app.profileRefreshError = fmt.Errorf("previous error")
+	app.currentView = &MockView{name: "Dashboard"}
+
+	msg := navmsg.ProfilesChangedMsg{Selections: nil}
+	app.Update(msg)
+
+	if app.profileRefreshError != nil {
+		t.Error("Expected profileRefreshError to be cleared on new profile change")
+	}
+	if !app.profileRefreshing {
+		t.Error("Expected profileRefreshing to be true")
+	}
+}
+
+func TestProfileRefresh_RapidChangesOnlyLatestHonored(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+	firstID := app.profileRefreshID
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+	secondID := app.profileRefreshID
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+	thirdID := app.profileRefreshID
+
+	if thirdID != 3 {
+		t.Errorf("Expected profileRefreshID to be 3, got %d", thirdID)
+	}
+
+	staleMsg := profileRefreshDoneMsg{
+		refreshID:  firstID,
+		region:     "us-east-1",
+		accountIDs: map[string]string{"old": "111111111111"},
+	}
+	app.Update(staleMsg)
+
+	if !app.profileRefreshing {
+		t.Error("Expected profileRefreshing to remain true after stale response")
+	}
+
+	anotherStaleMsg := profileRefreshDoneMsg{
+		refreshID:  secondID,
+		region:     "us-west-1",
+		accountIDs: map[string]string{"old2": "222222222222"},
+	}
+	app.Update(anotherStaleMsg)
+
+	if !app.profileRefreshing {
+		t.Error("Expected profileRefreshing to remain true after another stale response")
+	}
+
+	latestMsg := profileRefreshDoneMsg{
+		refreshID:  thirdID,
+		region:     "ap-northeast-1",
+		accountIDs: map[string]string{"latest": "333333333333"},
+	}
+	app.Update(latestMsg)
+
+	if app.profileRefreshing {
+		t.Error("Expected profileRefreshing to be false after latest response")
+	}
+}
+
+func TestModalShowAndHide(t *testing.T) {
+	app := newTestApp(t)
 
 	serviceBrowser := &MockView{name: "ServiceBrowser"}
 	app.currentView = serviceBrowser
@@ -292,12 +412,7 @@ func TestModalShowAndHide(t *testing.T) {
 }
 
 func TestModalNavigateClosesModal(t *testing.T) {
-	ctx := context.Background()
-	reg := registry.New()
-
-	app := New(ctx, reg)
-	app.width = 100
-	app.height = 50
+	app := newTestApp(t)
 
 	serviceBrowser := &MockView{name: "ServiceBrowser"}
 	app.currentView = serviceBrowser
@@ -321,6 +436,194 @@ func TestModalNavigateClosesModal(t *testing.T) {
 	}
 }
 
+func TestKeyOpensModal(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+	}{
+		{"region selector", "R"},
+		{"profile selector", "P"},
+		{"help view", "?"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := newTestApp(t)
+			app.currentView = &MockView{name: "Dashboard"}
+			app.viewStack = nil
+
+			app.Update(tea.KeyPressMsg{Code: 0, Text: tt.key})
+
+			if app.modal == nil {
+				t.Errorf("Expected modal after %s key", tt.key)
+			}
+			if app.currentView.StatusLine() != "Dashboard" {
+				t.Errorf("Expected currentView Dashboard, got %s", app.currentView.StatusLine())
+			}
+			if len(app.viewStack) != 0 {
+				t.Errorf("Expected empty viewStack, got %d", len(app.viewStack))
+			}
+		})
+	}
+}
+
+func TestCommandModeActivation(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+
+	app.Update(tea.KeyPressMsg{Code: 0, Text: ":"})
+
+	if !app.commandMode {
+		t.Error("Expected commandMode=true after ':' key")
+	}
+	if app.modal != nil {
+		t.Error("Expected no modal for command mode")
+	}
+}
+
+func TestModalClosesWithKey(t *testing.T) {
+	tests := []struct {
+		name string
+		key  tea.KeyPressMsg
+	}{
+		{"q key", tea.KeyPressMsg{Code: 0, Text: "q"}},
+		{"esc key", tea.KeyPressMsg{Code: tea.KeyEscape}},
+		{"backspace", tea.KeyPressMsg{Code: tea.KeyBackspace}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := newTestApp(t)
+			app.currentView = &MockView{name: "Dashboard"}
+			app.modal = &view.Modal{Content: &MockView{name: "TestModal"}}
+
+			app.Update(tt.key)
+
+			if app.modal != nil {
+				t.Errorf("Expected modal nil after %s", tt.name)
+			}
+			if app.currentView.StatusLine() != "Dashboard" {
+				t.Errorf("Expected currentView Dashboard, got %s", app.currentView.StatusLine())
+			}
+		})
+	}
+}
+
+func TestMessageClosesModal(t *testing.T) {
+	tests := []struct {
+		name string
+		msg  tea.Msg
+	}{
+		{"RegionChangedMsg", navmsg.RegionChangedMsg{Regions: []string{"us-west-2"}}},
+		{"ProfilesChangedMsg", navmsg.ProfilesChangedMsg{Selections: nil}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := newTestApp(t)
+			app.currentView = &MockView{name: "Dashboard"}
+			app.modal = &view.Modal{Content: &MockView{name: "TestModal"}}
+
+			app.Update(tt.msg)
+
+			if app.modal != nil {
+				t.Errorf("Expected modal closed after %s", tt.name)
+			}
+		})
+	}
+}
+
+func TestModalStackPushPop(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+
+	parentModal := &view.Modal{Content: &MockView{name: "ParentModal"}}
+	app.modal = parentModal
+
+	childModal := &view.Modal{Content: &MockView{name: "ChildModal"}}
+	app.Update(view.ShowModalMsg{Modal: childModal})
+
+	if app.modal.Content.StatusLine() != "ChildModal" {
+		t.Errorf("Expected ChildModal, got %s", app.modal.Content.StatusLine())
+	}
+	if len(app.modalStack) != 1 {
+		t.Errorf("Expected modalStack length 1, got %d", len(app.modalStack))
+	}
+
+	app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+
+	if app.modal.Content.StatusLine() != "ParentModal" {
+		t.Errorf("Expected ParentModal after esc, got %s", app.modal.Content.StatusLine())
+	}
+	if len(app.modalStack) != 0 {
+		t.Errorf("Expected empty modalStack, got %d", len(app.modalStack))
+	}
+
+	app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+
+	if app.modal != nil {
+		t.Error("Expected modal nil after second esc")
+	}
+}
+
+func TestShowModalFromNormalState(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+	app.modal = nil
+	app.modalStack = nil
+
+	modal := &view.Modal{Content: &MockView{name: "TestModal"}}
+	app.Update(view.ShowModalMsg{Modal: modal})
+
+	if app.modal == nil {
+		t.Error("Expected modal to be set")
+	}
+	if app.modal.Content.StatusLine() != "TestModal" {
+		t.Errorf("Expected TestModal, got %s", app.modal.Content.StatusLine())
+	}
+	if len(app.modalStack) != 0 {
+		t.Errorf("Expected empty modalStack when showing from normal state, got %d", len(app.modalStack))
+	}
+}
+
+func TestModalStackClearedOnRegionChange(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+
+	parentModal := &view.Modal{Content: &MockView{name: "ParentModal"}}
+	childModal := &view.Modal{Content: &MockView{name: "ChildModal"}}
+	app.modal = childModal
+	app.modalStack = []*view.Modal{parentModal}
+
+	app.Update(navmsg.RegionChangedMsg{Regions: []string{"us-west-2"}})
+
+	if app.modal != nil {
+		t.Error("Expected modal nil after RegionChangedMsg")
+	}
+	if len(app.modalStack) != 0 {
+		t.Errorf("Expected empty modalStack after RegionChangedMsg, got %d", len(app.modalStack))
+	}
+}
+
+func TestModalStackClearedOnProfileChange(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+
+	parentModal := &view.Modal{Content: &MockView{name: "ParentModal"}}
+	childModal := &view.Modal{Content: &MockView{name: "ChildModal"}}
+	app.modal = childModal
+	app.modalStack = []*view.Modal{parentModal}
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+
+	if app.modal != nil {
+		t.Error("Expected modal nil after ProfilesChangedMsg")
+	}
+	if len(app.modalStack) != 0 {
+		t.Errorf("Expected empty modalStack after ProfilesChangedMsg, got %d", len(app.modalStack))
+	}
+}
+
 func TestWarningScreenDismissal(t *testing.T) {
 	tests := []struct {
 		name string
@@ -333,10 +636,7 @@ func TestWarningScreenDismissal(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			reg := registry.New()
-
-			app := New(ctx, reg)
+			app := newTestApp(t)
 			app.showWarnings = true
 			app.warningsReady = true
 
@@ -346,5 +646,132 @@ func TestWarningScreenDismissal(t *testing.T) {
 				t.Errorf("Expected showWarnings=false after %s key", tt.name)
 			}
 		})
+	}
+}
+
+func TestProfileChangeStaysOnCurrentRefreshableView(t *testing.T) {
+	app := newTestApp(t)
+
+	dashboard := &RefreshableMockView{MockView: MockView{name: "Dashboard"}, canRefresh: true}
+	resourceBrowser := &RefreshableMockView{MockView: MockView{name: "ResourceBrowser"}, canRefresh: true}
+
+	app.viewStack = []view.View{dashboard}
+	app.currentView = resourceBrowser
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+
+	if app.currentView != resourceBrowser {
+		t.Errorf("Expected to stay on ResourceBrowser, got %T", app.currentView)
+	}
+	if len(app.viewStack) != 1 {
+		t.Errorf("Expected viewStack length 1, got %d", len(app.viewStack))
+	}
+}
+
+func TestRegionChangeStaysOnCurrentRefreshableView(t *testing.T) {
+	app := newTestApp(t)
+
+	dashboard := &RefreshableMockView{MockView: MockView{name: "Dashboard"}, canRefresh: true}
+	resourceBrowser := &RefreshableMockView{MockView: MockView{name: "ResourceBrowser"}, canRefresh: true}
+
+	app.viewStack = []view.View{dashboard}
+	app.currentView = resourceBrowser
+
+	app.Update(navmsg.RegionChangedMsg{Regions: []string{"us-east-1"}})
+
+	if app.currentView != resourceBrowser {
+		t.Errorf("Expected to stay on ResourceBrowser, got %T", app.currentView)
+	}
+	if len(app.viewStack) != 1 {
+		t.Errorf("Expected viewStack length 1, got %d", len(app.viewStack))
+	}
+}
+
+func TestProfileChangeFromNonRefreshableViewStaysOnCurrentView(t *testing.T) {
+	app := newTestApp(t)
+
+	dashboard := &RefreshableMockView{MockView: MockView{name: "Dashboard"}, canRefresh: true}
+	resourceBrowser := &RefreshableMockView{MockView: MockView{name: "ResourceBrowser"}, canRefresh: true}
+	detailView := &MockView{name: "DetailView"}
+
+	app.viewStack = []view.View{dashboard, resourceBrowser}
+	app.currentView = detailView
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+
+	if app.currentView != detailView {
+		t.Errorf("Expected to stay on DetailView, got %T", app.currentView)
+	}
+	if len(app.viewStack) != 2 {
+		t.Errorf("Expected viewStack length 2, got %d", len(app.viewStack))
+	}
+}
+
+func TestRegionChangeFromNonRefreshableViewStaysOnCurrentView(t *testing.T) {
+	app := newTestApp(t)
+
+	dashboard := &RefreshableMockView{MockView: MockView{name: "Dashboard"}, canRefresh: true}
+	resourceBrowser := &RefreshableMockView{MockView: MockView{name: "ResourceBrowser"}, canRefresh: true}
+	detailView := &MockView{name: "DetailView"}
+
+	app.viewStack = []view.View{dashboard, resourceBrowser}
+	app.currentView = detailView
+
+	app.Update(navmsg.RegionChangedMsg{Regions: []string{"us-west-2"}})
+
+	if app.currentView != detailView {
+		t.Errorf("Expected to stay on DetailView, got %T", app.currentView)
+	}
+	if len(app.viewStack) != 2 {
+		t.Errorf("Expected viewStack length 2, got %d", len(app.viewStack))
+	}
+}
+
+func TestNavigateBackWithEmptyStack(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+	app.viewStack = nil
+
+	cmd := app.navigateBack()
+
+	if cmd != nil {
+		t.Error("Expected nil cmd when stack is empty")
+	}
+	if app.currentView.StatusLine() != "Dashboard" {
+		t.Errorf("Expected currentView unchanged, got %s", app.currentView.StatusLine())
+	}
+}
+
+func TestRefreshCurrentViewWithNilView(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = nil
+
+	_, cmd := app.refreshCurrentView()
+
+	if cmd != nil {
+		t.Error("Expected nil cmd when currentView is nil")
+	}
+}
+
+func TestRefreshCurrentViewSendsRefreshMsgForRefreshableView(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &RefreshableMockView{MockView: MockView{name: "ResourceBrowser"}, canRefresh: true}
+
+	_, cmd := app.refreshCurrentView()
+
+	if cmd == nil {
+		t.Fatal("Expected non-nil cmd for refreshable view")
+	}
+}
+
+func TestRefreshCurrentViewKeepsNonRefreshableViewUnchanged(t *testing.T) {
+	app := newTestApp(t)
+	nonRefreshable := &MockView{name: "DetailView"}
+	app.currentView = nonRefreshable
+
+	_, _ = app.refreshCurrentView()
+
+	if app.currentView != nonRefreshable {
+		t.Errorf("Expected currentView unchanged, got %T", app.currentView)
 	}
 }

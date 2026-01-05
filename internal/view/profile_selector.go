@@ -44,12 +44,11 @@ func NewProfileSelector() *ProfileSelector {
 		initialSelected = append(initialSelected, sel.ID())
 	}
 
-	t := ui.Current()
 	p := &ProfileSelector{
 		selector:    NewMultiSelector[profileItem]("Select Profiles", initialSelected),
 		profileInfo: make(map[string]aws.ProfileInfo),
-		typeStyle:   lipgloss.NewStyle().Foreground(t.TextDim),
-		regionStyle: lipgloss.NewStyle().Foreground(t.TextDim),
+		typeStyle:   ui.DimStyle(),
+		regionStyle: ui.DimStyle(),
 	}
 
 	p.selector.SetRenderExtra(func(item profileItem) string {
@@ -355,6 +354,6 @@ func (p *ProfileSelector) toggleDetail() (tea.Model, tea.Cmd) {
 	info, hasInfo := p.profileInfo[profile.id]
 	detailView := NewProfileDetailView(profile, info, hasInfo)
 	return p, func() tea.Msg {
-		return ShowModalMsg{Modal: &Modal{Content: detailView}}
+		return ShowModalMsg{Modal: &Modal{Content: detailView, Width: ModalWidthProfileDetail}}
 	}
 }

@@ -140,68 +140,6 @@ func TestServiceBrowserCategoryNavigation(t *testing.T) {
 	}
 }
 
-func TestFuzzyMatch(t *testing.T) {
-	tests := []struct {
-		str     string
-		pattern string
-		want    bool
-	}{
-		// Regular fuzzy matching (backward compatibility)
-		{"AgentCoreStackdev", "agecrstdev", true},
-		{"AgentCoreStackdev", "agent", true},
-		{"AgentCoreStackdev", "acd", true},
-		{"AgentCoreStackdev", "xyz", false},
-		{"AgentCoreStackdev", "deva", false}, // order matters
-		{"i-1234567890abcdef0", "i1234", true},
-		{"i-1234567890abcdef0", "abcdef", true},
-		{"production", "prod", true},
-		{"production", "pdn", true},
-		{"", "a", false},
-		{"abc", "", true}, // empty pattern matches everything
-
-		// Prefix matching (^pattern)
-		{"127.0.0.1", "^127.0", true},
-		{"127.0.0.1", "^127.0.0.1", true},
-		{"192.168.1.1", "^127.0", false},
-		{"Hello World", "^hello", true}, // case insensitive
-		{"test", "^", true},             // empty after caret
-
-		// Contains matching (*pattern)
-		{"hello world", "*world", true},
-		{"hello world", "*hello", true},
-		{"hello world", "*lo wo", true},
-		{"hello world", "*xyz", false},
-		{"Hello World", "*world", true}, // case insensitive
-		{"test", "*", true},             // empty after asterisk
-
-		// Suffix matching ($pattern)
-		{"127.0.0.1", "$0.1", true},
-		{"127.0.0.1", "$127.0.0.1", true},
-		{"192.168.1.1", "$0.1", false},
-		{"Hello World", "$world", true}, // case insensitive
-		{"test", "$", true},             // empty after dollar
-
-		// Edge cases
-		{"a", "^a", true},
-		{"a", "*a", true},
-		{"a", "$a", true},
-		{"a", "a", true},
-		{"", "^", true},
-		{"", "*", true},
-		{"", "$", true},
-		{"", "", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.str+"_"+tt.pattern, func(t *testing.T) {
-			got := fuzzyMatch(tt.str, tt.pattern)
-			if got != tt.want {
-				t.Errorf("fuzzyMatch(%q, %q) = %v, want %v", tt.str, tt.pattern, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestServiceBrowserMouseHover(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()

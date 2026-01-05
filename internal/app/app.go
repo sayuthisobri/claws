@@ -11,7 +11,10 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/clipboard"
 	"github.com/clawscli/claws/internal/config"
+	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/registry"
@@ -19,16 +22,38 @@ import (
 	"github.com/clawscli/claws/internal/view"
 )
 
-// awsInitTimeout is the maximum time to wait for AWS context initialization
-const awsInitTimeout = 5 * time.Second
-
-// clearErrorMsg is sent to clear transient errors after a timeout
 type clearErrorMsg struct{}
+
+type clearFlashMsg struct{}
+
+// StartupPath specifies the initial view to show when the app starts.
+type StartupPath struct {
+	Service      string
+	ResourceType string
+	ResourceID   string
+}
+
+const flashDuration = 2 * time.Second
 
 // awsContextReadyMsg is sent when AWS context initialization completes
 type awsContextReadyMsg struct {
 	err error
 }
+
+// profileRefreshDoneMsg is sent when async profile refresh completes
+type profileRefreshDoneMsg struct {
+	refreshID  uint64
+	region     string
+	accountIDs map[string]string
+	err        error
+}
+
+type startupResourceMsg struct {
+	resource dao.Resource
+	err      error
+}
+
+type noOpMsg struct{}
 
 // App is the main application model
 // appStyles holds cached lipgloss styles for performance
@@ -44,20 +69,21 @@ type appStyles struct {
 func newAppStyles(width int) appStyles {
 	t := ui.Current()
 	return appStyles{
-		status:       lipgloss.NewStyle().Background(t.TableHeader).Foreground(t.TableHeaderText).Padding(0, 1).Width(width),
-		readOnly:     lipgloss.NewStyle().Background(t.Warning).Foreground(lipgloss.Color("#000000")).Bold(true).Padding(0, 1),
-		warningTitle: lipgloss.NewStyle().Bold(true).Foreground(t.Pending).MarginBottom(1),
-		warningItem:  lipgloss.NewStyle().Foreground(t.Warning),
-		warningDim:   lipgloss.NewStyle().Foreground(t.TextDim).MarginTop(1),
-		warningBox:   lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.Pending).Padding(1, 2),
+		status:       ui.TableHeaderStyle().Padding(0, 1).Width(width),
+		readOnly:     ui.ReadOnlyBadgeStyle(),
+		warningTitle: ui.BoldPendingStyle().MarginBottom(1),
+		warningItem:  ui.WarningStyle(),
+		warningDim:   ui.DimStyle().MarginTop(1),
+		warningBox:   ui.BoxStyle().BorderForeground(t.Pending).Padding(1, 2),
 	}
 }
 
 type App struct {
-	ctx      context.Context
-	registry *registry.Registry
-	width    int
-	height   int
+	ctx         context.Context
+	registry    *registry.Registry
+	startupPath *StartupPath
+	width       int
+	height      int
 
 	currentView view.View
 	viewStack   []view.View
@@ -73,18 +99,26 @@ type App struct {
 	showWarnings  bool
 	warningsReady bool
 
-	awsInitializing bool
+	awsInitializing     bool
+	profileRefreshID    uint64
+	profileRefreshing   bool
+	profileRefreshError error
 
 	modal         *view.Modal
+	modalStack    []*view.Modal
 	modalRenderer *view.ModalRenderer
+
+	clipboardFlash   string
+	clipboardWarning bool
 
 	styles appStyles
 }
 
-func New(ctx context.Context, reg *registry.Registry) *App {
+func New(ctx context.Context, reg *registry.Registry, startupPath *StartupPath) *App {
 	return &App{
 		ctx:           ctx,
 		registry:      reg,
+		startupPath:   startupPath,
 		commandInput:  view.NewCommandInput(ctx, reg),
 		help:          help.New(),
 		keys:          defaultKeyMap(),
@@ -95,20 +129,31 @@ func New(ctx context.Context, reg *registry.Registry) *App {
 
 // Init implements tea.Model
 func (a *App) Init() tea.Cmd {
-	// Start with the dashboard view immediately (no blocking on AWS calls)
-	a.currentView = view.NewDashboardView(a.ctx, a.registry)
 	a.awsInitializing = true
 
-	// Initialize AWS context in background (region detection, account ID fetch)
-	// Use timeout to avoid indefinite hang on network issues
+	if a.startupPath != nil {
+		a.currentView = view.NewResourceBrowserWithType(
+			a.ctx, a.registry,
+			a.startupPath.Service, a.startupPath.ResourceType,
+		)
+	} else {
+		a.currentView = view.NewDashboardView(a.ctx, a.registry)
+	}
+
 	initAWSCmd := func() tea.Msg {
-		ctx, cancel := context.WithTimeout(a.ctx, awsInitTimeout)
+		ctx, cancel := context.WithTimeout(a.ctx, config.File().AWSInitTimeout())
 		defer cancel()
 		err := aws.InitContext(ctx)
 		return awsContextReadyMsg{err: err}
 	}
 
-	return tea.Batch(a.currentView.Init(), initAWSCmd)
+	cmds := []tea.Cmd{a.currentView.Init(), initAWSCmd}
+
+	if a.startupPath != nil && a.startupPath.ResourceID != "" {
+		cmds = append(cmds, a.fetchStartupResource)
+	}
+
+	return tea.Batch(cmds...)
 }
 
 // Update implements tea.Model
@@ -136,13 +181,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.commandMode = false
 			}
 			if nav != nil {
-				// Navigate to the command result
-				if nav.ClearStack {
-					// Go home - clear the stack
-					a.viewStack = nil
-				} else if a.currentView != nil {
-					a.viewStack = append(a.viewStack, a.currentView)
-				}
+				a.pushOrClearStack(nav.ClearStack)
 				a.currentView = nav.View
 				cmds := []tea.Cmd{
 					cmd,
@@ -172,11 +211,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case tea.MouseClickMsg:
-		// Mouse back button navigates back (same as esc/backspace)
-		if msg.Button == tea.MouseBackward && len(a.viewStack) > 0 {
-			a.currentView = a.viewStack[len(a.viewStack)-1]
-			a.viewStack = a.viewStack[:len(a.viewStack)-1]
-			return a, a.currentView.SetSize(a.width, a.height-2)
+		if msg.Button == tea.MouseBackward {
+			if cmd := a.navigateBack(); cmd != nil {
+				return a, cmd
+			}
 		}
 
 	case tea.KeyPressMsg:
@@ -192,11 +230,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return a, cmd
 			}
-			// Otherwise, go back
-			if len(a.viewStack) > 0 {
-				a.currentView = a.viewStack[len(a.viewStack)-1]
-				a.viewStack = a.viewStack[:len(a.viewStack)-1]
-				return a, a.currentView.SetSize(a.width, a.height-2)
+			if cmd := a.navigateBack(); cmd != nil {
+				return a, cmd
 			}
 			return a, nil
 		}
@@ -204,23 +239,17 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, a.keys.Quit):
 			switch a.currentView.(type) {
-			case *view.DetailView, *view.DiffView:
-				if len(a.viewStack) > 0 {
-					a.currentView = a.viewStack[len(a.viewStack)-1]
-					a.viewStack = a.viewStack[:len(a.viewStack)-1]
-					return a, a.currentView.SetSize(a.width, a.height-2)
+			case *view.DetailView, *view.DiffView, *view.LogView:
+				if cmd := a.navigateBack(); cmd != nil {
+					return a, cmd
 				}
 			}
 			return a, tea.Quit
 
 		case key.Matches(msg, a.keys.Help):
-			// Show full help view
 			helpView := view.NewHelpView()
-			if a.currentView != nil {
-				a.viewStack = append(a.viewStack, a.currentView)
-			}
-			a.currentView = helpView
-			return a, a.currentView.SetSize(a.width, a.height-2)
+			a.modal = &view.Modal{Content: helpView, Width: view.ModalWidthHelp}
+			return a, a.modal.SetSize(a.width, a.height)
 
 		case key.Matches(msg, a.keys.Command):
 			a.commandMode = true
@@ -236,44 +265,26 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, a.keys.Region):
 			regionSelector := view.NewRegionSelector(a.ctx)
-			if a.currentView != nil {
-				a.viewStack = append(a.viewStack, a.currentView)
-			}
-			a.currentView = regionSelector
+			a.modal = &view.Modal{Content: regionSelector, Width: view.ModalWidthRegion}
 			return a, tea.Batch(
-				a.currentView.Init(),
-				a.currentView.SetSize(a.width, a.height-2),
+				regionSelector.Init(),
+				a.modal.SetSize(a.width, a.height),
 			)
 
 		case key.Matches(msg, a.keys.Profile):
 			profileSelector := view.NewProfileSelector()
-			if a.currentView != nil {
-				a.viewStack = append(a.viewStack, a.currentView)
-			}
-			a.currentView = profileSelector
+			a.modal = &view.Modal{Content: profileSelector, Width: view.ModalWidthProfile}
 			return a, tea.Batch(
-				a.currentView.Init(),
-				a.currentView.SetSize(a.width, a.height-2),
+				profileSelector.Init(),
+				a.modal.SetSize(a.width, a.height),
 			)
 		}
 
 	case view.ShowModalMsg:
-		a.modal = msg.Modal
-		return a, a.modal.SetSize(a.width, a.height)
+		return a.showModal(msg.Modal)
 
 	case view.NavigateMsg:
-		log.Debug("navigating", "clearStack", msg.ClearStack, "stackDepth", len(a.viewStack))
-		if msg.ClearStack {
-			a.viewStack = nil
-		} else if a.currentView != nil {
-			a.viewStack = append(a.viewStack, a.currentView)
-		}
-		a.currentView = msg.View
-		cmds := []tea.Cmd{
-			a.currentView.Init(),
-			a.currentView.SetSize(a.width, a.height-2),
-		}
-		return a, tea.Batch(cmds...)
+		return a.handleNavigate(msg)
 
 	case view.ErrorMsg:
 		log.Error("application error", "error", msg.Err)
@@ -285,6 +296,24 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case clearErrorMsg:
 		a.err = nil
+		return a, nil
+
+	case clipboard.CopiedMsg:
+		a.clipboardFlash = "Copied " + msg.Label
+		a.clipboardWarning = false
+		return a, tea.Tick(flashDuration, func(t time.Time) tea.Msg {
+			return clearFlashMsg{}
+		})
+
+	case clipboard.NoARNMsg:
+		a.clipboardFlash = "No ARN available"
+		a.clipboardWarning = true
+		return a, tea.Tick(flashDuration, func(t time.Time) tea.Msg {
+			return clearFlashMsg{}
+		})
+
+	case clearFlashMsg:
+		a.clipboardFlash = ""
 		return a, nil
 
 	case awsContextReadyMsg:
@@ -300,8 +329,58 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.showWarnings = true
 			}
 		}
-		// Trigger a re-render to update header with account ID
 		return a, nil
+
+	case profileRefreshDoneMsg:
+		if msg.refreshID != a.profileRefreshID {
+			log.Debug("ignoring stale profile refresh", "got", msg.refreshID, "want", a.profileRefreshID)
+			return a, nil
+		}
+		a.profileRefreshing = false
+		a.profileRefreshError = msg.err
+		if msg.err != nil {
+			log.Warn("profile refresh failed", "error", msg.err)
+			return a, nil
+		}
+		if msg.region != "" {
+			config.Global().AddRegion(msg.region)
+		}
+		if len(msg.accountIDs) > 0 {
+			for profileID, accountID := range msg.accountIDs {
+				config.Global().SetAccountIDForProfile(profileID, accountID)
+			}
+		}
+		return a, nil
+
+	case startupResourceMsg:
+		if a.startupPath == nil {
+			return a, nil
+		}
+		if msg.err != nil || msg.resource == nil {
+			if msg.err != nil {
+				log.Warn("startup resource fetch failed", "error", msg.err, "id", a.startupPath.ResourceID)
+			}
+			a.clipboardFlash = "Resource not found: " + a.startupPath.ResourceID
+			a.clipboardWarning = true
+			return a, tea.Tick(flashDuration, func(t time.Time) tea.Msg {
+				return clearFlashMsg{}
+			})
+		}
+		renderer, err := a.registry.GetRenderer(a.startupPath.Service, a.startupPath.ResourceType)
+		if err != nil {
+			log.Warn("failed to get renderer for startup resource", "error", err)
+			return a, nil
+		}
+		// DAO is optional - DetailView handles nil gracefully (just disables refresh).
+		// Unlike renderer which is required for display, DAO only enables refresh functionality.
+		d, err := a.registry.GetDAO(a.ctx, a.startupPath.Service, a.startupPath.ResourceType)
+		if err != nil {
+			log.Warn("failed to get DAO for startup resource", "error", err)
+		}
+		detailView := view.NewDetailView(a.ctx, msg.resource, renderer, a.startupPath.Service, a.startupPath.ResourceType, a.registry, d)
+		a.viewStack = append(a.viewStack, a.currentView)
+		a.currentView = detailView
+		return a, tea.Batch(detailView.Init(), detailView.SetSize(a.width, a.height-2))
 
 	case view.SsoLoginRequestMsg:
 		// Show SSO login confirmation modal
@@ -320,50 +399,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 
 	case navmsg.RegionChangedMsg:
-		log.Info("regions changed", "regions", msg.Regions)
-		// Pop views until we find a refreshable one (ResourceBrowser or ServiceBrowser)
-		for len(a.viewStack) > 0 {
-			a.currentView = a.viewStack[len(a.viewStack)-1]
-			a.viewStack = a.viewStack[:len(a.viewStack)-1]
-			if r, ok := a.currentView.(view.Refreshable); ok && r.CanRefresh() {
-				return a, tea.Batch(
-					a.currentView.SetSize(a.width, a.height-2),
-					func() tea.Msg { return view.RefreshMsg{} },
-				)
-			}
-		}
-		// Fallback to dashboard if no refreshable view found
-		a.currentView = view.NewDashboardView(a.ctx, a.registry)
-		return a, tea.Batch(
-			a.currentView.Init(),
-			a.currentView.SetSize(a.width, a.height-2),
-		)
+		return a.handleRegionChanged(msg)
 
 	case navmsg.ProfilesChangedMsg:
-		log.Info("profiles changed", "count", len(msg.Selections))
-		if err := aws.RefreshContext(a.ctx); err != nil {
-			log.Debug("failed to refresh profile config", "error", err)
-		}
-		for len(a.viewStack) > 0 {
-			a.currentView = a.viewStack[len(a.viewStack)-1]
-			a.viewStack = a.viewStack[:len(a.viewStack)-1]
-
-			if _, ok := a.currentView.(*view.ProfileSelector); ok {
-				continue
-			}
-
-			if r, ok := a.currentView.(view.Refreshable); ok && r.CanRefresh() {
-				return a, tea.Batch(
-					a.currentView.SetSize(a.width, a.height-2),
-					func() tea.Msg { return view.RefreshMsg{} },
-				)
-			}
-		}
-		a.currentView = view.NewDashboardView(a.ctx, a.registry)
-		return a, tea.Batch(
-			a.currentView.Init(),
-			a.currentView.SetSize(a.width, a.height-2),
-		)
+		return a.handleProfilesChanged(msg)
 
 	case view.SortMsg:
 		// Delegate sort command to current view
@@ -415,6 +454,12 @@ func (a *App) View() tea.View {
 	var statusContent string
 	if a.err != nil {
 		statusContent = ui.DangerStyle().Render("Error: " + a.err.Error())
+	} else if a.clipboardFlash != "" {
+		if a.clipboardWarning {
+			statusContent = ui.WarningStyle().Render("⚠ " + a.clipboardFlash)
+		} else {
+			statusContent = ui.SuccessStyle().Render("✓ " + a.clipboardFlash)
+		}
 	} else if a.currentView != nil {
 		statusContent = a.currentView.StatusLine()
 	}
@@ -426,6 +471,12 @@ func (a *App) View() tea.View {
 
 	if a.awsInitializing {
 		statusContent = ui.DimStyle().Render("AWS initializing...") + " • " + statusContent
+	}
+
+	if a.profileRefreshError != nil {
+		statusContent = ui.WarningStyle().Render("⚠ Profile error") + " • " + statusContent
+	} else if a.profileRefreshing {
+		statusContent = ui.DimStyle().Render("Refreshing profile...") + " • " + statusContent
 	}
 
 	status := a.styles.status.Render(statusContent)
@@ -468,30 +519,29 @@ func (a *App) renderWarnings() string {
 func (a *App) handleModalUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case view.HideModalMsg:
-		a.modal = nil
-		return a, nil
+		return a.popModal()
+
+	case view.ShowModalMsg:
+		return a.showModal(msg.Modal)
 
 	case view.NavigateMsg:
-		a.modal = nil
-		log.Debug("modal navigate", "clearStack", msg.ClearStack, "stackDepth", len(a.viewStack))
-		if msg.ClearStack {
-			a.viewStack = nil
-		} else if a.currentView != nil {
-			a.viewStack = append(a.viewStack, a.currentView)
-		}
-		a.currentView = msg.View
-		return a, tea.Batch(
-			a.currentView.Init(),
-			a.currentView.SetSize(a.width, a.height-2),
-		)
+		a.clearModalState()
+		return a.handleNavigate(msg)
+
+	case navmsg.RegionChangedMsg:
+		a.clearModalState()
+		return a.handleRegionChanged(msg)
+
+	case navmsg.ProfilesChangedMsg:
+		a.clearModalState()
+		return a.handleProfilesChanged(msg)
 
 	case tea.KeyPressMsg:
 		if view.IsEscKey(msg) || msg.Code == tea.KeyBackspace || msg.String() == "q" {
 			if ic, ok := a.modal.Content.(view.InputCapture); ok && ic.HasActiveInput() {
 				break
 			}
-			a.modal = nil
-			return a, nil
+			return a.popModal()
 		}
 
 	case tea.WindowSizeMsg:
@@ -509,6 +559,152 @@ func (a *App) handleModalUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	modal, cmd := a.modal.Update(msg)
 	a.modal = modal
 	return a, cmd
+}
+
+func (a *App) popModal() (tea.Model, tea.Cmd) {
+	if len(a.modalStack) > 0 {
+		a.modal = a.modalStack[len(a.modalStack)-1]
+		a.modalStack = a.modalStack[:len(a.modalStack)-1]
+		return a, a.modal.SetSize(a.width, a.height)
+	}
+	a.modal = nil
+	return a, nil
+}
+
+func (a *App) clearModalState() {
+	a.modal = nil
+	a.modalStack = nil
+}
+
+func (a *App) showModal(modal *view.Modal) (tea.Model, tea.Cmd) {
+	if a.modal != nil {
+		a.modalStack = append(a.modalStack, a.modal)
+	}
+	a.modal = modal
+	return a, a.modal.SetSize(a.width, a.height)
+}
+
+func (a *App) handleNavigate(msg view.NavigateMsg) (tea.Model, tea.Cmd) {
+	log.Debug("navigating", "clearStack", msg.ClearStack, "stackDepth", len(a.viewStack))
+	a.pushOrClearStack(msg.ClearStack)
+	a.currentView = msg.View
+	return a, tea.Batch(
+		a.currentView.Init(),
+		a.currentView.SetSize(a.width, a.height-2),
+	)
+}
+
+// popView pops the top view from the view stack.
+// Returns nil if the stack is empty.
+func (a *App) popView() view.View {
+	if len(a.viewStack) == 0 {
+		return nil
+	}
+	v := a.viewStack[len(a.viewStack)-1]
+	a.viewStack = a.viewStack[:len(a.viewStack)-1]
+	return v
+}
+
+// navigateBack pops from the view stack and sets it as the current view.
+// Calls Init() to ensure the view is properly reinitialized (important for stateful views).
+// Returns nil if the stack is empty (no-op).
+func (a *App) navigateBack() tea.Cmd {
+	v := a.popView()
+	if v == nil {
+		return nil
+	}
+	a.currentView = v
+	log.Debug("navigating back", "view", a.currentView.StatusLine(), "stackDepth", len(a.viewStack))
+	return tea.Batch(
+		a.currentView.Init(),
+		a.currentView.SetSize(a.width, a.height-2),
+	)
+}
+
+// pushOrClearStack either clears the view stack (for home navigation) or
+// pushes the current view onto the stack (for drill-down navigation).
+func (a *App) pushOrClearStack(clearStack bool) {
+	if clearStack {
+		a.viewStack = nil
+	} else if a.currentView != nil {
+		a.viewStack = append(a.viewStack, a.currentView)
+	}
+}
+
+func (a *App) fetchStartupResource() tea.Msg {
+	if a.startupPath == nil || a.startupPath.ResourceID == "" {
+		return noOpMsg{}
+	}
+
+	d, err := a.registry.GetDAO(a.ctx, a.startupPath.Service, a.startupPath.ResourceType)
+	if err != nil {
+		return startupResourceMsg{err: apperrors.Wrap(err, "get DAO for startup resource")}
+	}
+
+	resource, err := d.Get(a.ctx, a.startupPath.ResourceID)
+	return startupResourceMsg{resource: resource, err: apperrors.Wrap(err, "fetch startup resource")}
+}
+
+func (a *App) handleRegionChanged(msg navmsg.RegionChangedMsg) (tea.Model, tea.Cmd) {
+	log.Info("regions changed", "regions", msg.Regions)
+	if config.File().PersistenceEnabled() {
+		_, existingProfile := config.File().GetStartup()
+		config.File().SetStartup(msg.Regions, existingProfile)
+		if err := config.File().Save(); err != nil {
+			log.Warn("failed to persist config", "error", err)
+		}
+	}
+	return a.refreshCurrentView()
+}
+
+func (a *App) handleProfilesChanged(msg navmsg.ProfilesChangedMsg) (tea.Model, tea.Cmd) {
+	log.Info("profiles changed", "count", len(msg.Selections))
+	if config.File().PersistenceEnabled() {
+		profile := ""
+		if len(msg.Selections) > 0 && msg.Selections[0].IsNamedProfile() {
+			profile = msg.Selections[0].ProfileName
+		}
+		existingRegions := config.Global().Regions()
+		config.File().SetStartup(existingRegions, profile)
+		if err := config.File().Save(); err != nil {
+			log.Warn("failed to persist config", "error", err)
+		}
+	}
+	a.profileRefreshID++
+	a.profileRefreshing = true
+	a.profileRefreshError = nil
+	refreshID := a.profileRefreshID
+	refreshCmd := func() tea.Msg {
+		ctx, cancel := context.WithTimeout(a.ctx, config.File().AWSInitTimeout())
+		defer cancel()
+		region, accountIDs, err := aws.RefreshContextData(ctx)
+		return profileRefreshDoneMsg{
+			refreshID:  refreshID,
+			region:     region,
+			accountIDs: accountIDs,
+			err:        err,
+		}
+	}
+
+	_, viewCmd := a.refreshCurrentView()
+	return a, tea.Batch(refreshCmd, viewCmd)
+}
+
+// refreshCurrentView triggers a refresh on the current view if it's refreshable.
+// Unlike the previous popToRefreshableView(), this stays on the current view instead of
+// popping the stack to find a refreshable ancestor. This provides better UX by keeping
+// the user's context (e.g., staying on ResourceBrowser after profile/region change).
+func (a *App) refreshCurrentView() (tea.Model, tea.Cmd) {
+	if a.currentView == nil {
+		return a, nil
+	}
+	cmds := []tea.Cmd{a.currentView.SetSize(a.width, a.height-2)}
+	r, canRefresh := a.currentView.(view.Refreshable)
+	if canRefresh && r.CanRefresh() {
+		cmds = append(cmds, func() tea.Msg { return view.RefreshMsg{} })
+	}
+	log.Debug("refreshing current view", "view", a.currentView.StatusLine(), "refreshable", canRefresh && r.CanRefresh())
+	return a, tea.Batch(cmds...)
 }
 
 type keyMap struct {
